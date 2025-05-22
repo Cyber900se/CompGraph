@@ -1,3 +1,0 @@
-C:/Code/C++/projects/CG.Lab1/cmake-build-debug-visual-studio/CMakeFiles/CG_Lab1.dir
-C:/Code/C++/projects/CG.Lab1/cmake-build-debug-visual-studio/CMakeFiles/edit_cache.dir
-C:/Code/C++/projects/CG.Lab1/cmake-build-debug-visual-studio/CMakeFiles/rebuild_cache.dir

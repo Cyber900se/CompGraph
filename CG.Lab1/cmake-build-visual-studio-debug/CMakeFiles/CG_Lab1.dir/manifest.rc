@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/Gits/CompGraph/CG.Lab1/cmake-build-visual-studio-debug/CMakeFiles/CG_Lab1.dir/embed.manifest"
