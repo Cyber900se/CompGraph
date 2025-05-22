@@ -68,5 +68,5 @@ void Application::Update(float deltaTime) {
 }
 
 void Application::Render() {
-    renderer.Render();
+    renderer.Render(screenWidth, screenHeight);
 }

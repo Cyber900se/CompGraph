@@ -17,7 +17,7 @@ public:
 
     bool Initialize(HWND hWnd, UINT width, UINT height);
     void Update(float deltaTime);
-    void Render();
+    void Render(float width, float height);
 
 private:
     Graphics graphics;

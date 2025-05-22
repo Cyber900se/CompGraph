@@ -18,13 +18,17 @@ void Renderer::Update(float deltaTime) {
 
     if (totalTime >= 1.0f) {
         float fps = frameCount / totalTime;
-        std::wstring title = L"My3DApp - FPS: " + std::to_wstring(fps);
-        SetWindowText(hWnd, title.c_str());
-        totalTime = 0.0f;
+        totalTime -= 1.0f;
+
+        WCHAR text[256];
+        swprintf_s(text, ARRAYSIZE(text), L"FPS: %f", fps);
+
+        SetWindowTextW(hWnd, text);
+
         frameCount = 0;
     }
 }
 
-void Renderer::Render() {
-    graphics.Render();
+void Renderer::Render(float width, float height) {
+    graphics.Render(totalTime, width, height);
 }

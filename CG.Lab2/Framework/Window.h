@@ -12,9 +12,9 @@ class Window {
 public:
     bool Initialize(HINSTANCE hInstance, int width, int height, LPCWSTR title);
     void Show();
-    HWND GetHWND() const { return m_hwnd; }
+    [[nodiscard]] HWND GetHWND() const { return m_hwnd; }
 
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+    static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam);
 
 private:
     HWND m_hwnd;
