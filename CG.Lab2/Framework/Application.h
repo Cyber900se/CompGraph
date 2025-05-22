@@ -7,30 +7,27 @@
 
 #pragma once
 #include <windows.h>
-#include "Graphics.h"
+#include <chrono>
 #include "Renderer.h"
 
 class Application {
 public:
-    Application(HINSTANCE hInstance);
+    Application();
     ~Application();
 
-    bool Initialize();
-    void Run();
+    bool Initialize(HINSTANCE hInstance);
+    int Run();
 
 private:
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    bool InitWindow();
+    bool InitWindow(HINSTANCE hInstance);
+    void Update(float deltaTime);
+    void Render();
 
-private:
-    HINSTANCE hInstance;
-    HWND hwnd;
-    Graphics* graphics;
-    Renderer* renderer;
-
-    const wchar_t* windowClassName = L"MyAppWindow";
-    int width = 800;
-    int height = 600;
+    HWND hWnd;
+    LPCWSTR applicationName = L"My3DApp";
+    unsigned int screenWidth = 800;
+    unsigned int screenHeight = 800;
+    Renderer renderer;
 };
 
 #endif //APPLICATION_H

@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "CMakeFiles\\CG_Lab2.dir\\Framework\\Graphics.cpp.obj",
+            "outputs": [
+                "C:\\Gits\\CompGraph\\CG.Lab2\\cmake-build-visualstudio-debug\\vc140.pdb",
+                "CMakeFiles\\CG_Lab2.dir\\Framework\\Graphics.cpp.obj.ddi"
+            ],
+            "requires": []
+        }
+    ]
+}

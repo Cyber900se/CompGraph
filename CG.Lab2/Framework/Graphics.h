@@ -7,43 +7,34 @@
 
 #pragma once
 #include <windows.h>
-#include <wrl.h>
 #include <d3d11.h>
-#include <DirectXMath.h>
-#include <string>
+#include <wrl.h>
+#include <directxmath.h>
 
 class Graphics {
 public:
-    Graphics(HWND hwnd, UINT width, UINT height);
-    bool Initialize();
+    Graphics();
+    ~Graphics();
 
-    void Clear(float r, float g, float b, float a);
-    void DrawIndexed(UINT indexCount);
-    void Present();
-
-    ID3D11DeviceContext* GetContext() const;
-    ID3D11Buffer* GetVertexBuffer() const;
-    ID3D11Buffer* GetIndexBuffer() const;
+    bool Initialize(HWND hWnd, UINT width, UINT height);
+    void Render();
 
 private:
-    bool CreateTriangle();
-    bool LoadShaders(const std::wstring& shaderFile);
+    bool InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height);
+    bool InitShaders();
+    bool InitGeometry();
 
-    HWND m_hwnd;
-    UINT m_width, m_height;
-
-    Microsoft::WRL::ComPtr<ID3D11Device> m_device;
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_context;
-    Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapChain;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_rtv;
-
-    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_vs;
-    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_ps;
-    Microsoft::WRL::ComPtr<ID3D11InputLayout> m_layout;
-    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterState;
-
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_vb;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_ib;
+    Microsoft::WRL::ComPtr<ID3D11Device> device;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterState;
 };
+
 
 #endif //GRAPHICS_H

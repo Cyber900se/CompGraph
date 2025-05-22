@@ -4,16 +4,26 @@
 
 #ifndef RENDERER_H
 #define RENDERER_H
+
 #pragma once
+#include <windows.h>
+#include <string>
 #include "Graphics.h"
 
 class Renderer {
 public:
-    Renderer(Graphics* gfx);
-    void RenderFrame();
+    Renderer();
+    ~Renderer();
+
+    bool Initialize(HWND hWnd, UINT width, UINT height);
+    void Update(float deltaTime);
+    void Render();
 
 private:
-    Graphics* m_gfx;
+    Graphics graphics;
+    HWND hWnd;
+    float totalTime = 0.0f;
+    unsigned int frameCount = 0;
 };
 
 

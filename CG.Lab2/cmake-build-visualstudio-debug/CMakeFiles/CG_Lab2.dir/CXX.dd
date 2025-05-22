@@ -1,0 +1,11 @@
+ninja_dyndep_version = 1.0
+build CMakeFiles\CG_Lab2.dir\WinMain.cpp.obj: dyndep
+
+build CMakeFiles\CG_Lab2.dir\Framework\Application.cpp.obj: dyndep
+
+build CMakeFiles\CG_Lab2.dir\Framework\Window.cpp.obj: dyndep
+
+build CMakeFiles\CG_Lab2.dir\Framework\Graphics.cpp.obj: dyndep
+
+build CMakeFiles\CG_Lab2.dir\Framework\Renderer.cpp.obj: dyndep
+

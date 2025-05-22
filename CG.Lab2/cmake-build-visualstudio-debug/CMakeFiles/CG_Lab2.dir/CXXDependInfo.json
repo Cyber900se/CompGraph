@@ -1,0 +1,50 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "MSVC",
+	"compiler-id" : "MSVC",
+	"compiler-simulate-id" : "",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"database-info" : null,
+	"dir-cur-bld" : "C:/Gits/CompGraph/CG.Lab2/cmake-build-visualstudio-debug",
+	"dir-cur-src" : "C:/Gits/CompGraph/CG.Lab2",
+	"dir-top-bld" : "C:/Gits/CompGraph/CG.Lab2/cmake-build-visualstudio-debug",
+	"dir-top-src" : "C:/Gits/CompGraph/CG.Lab2",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"C:\\Gits\\CompGraph\\CG.Lab2\\."
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Gits/CompGraph/CG.Lab2/cmake-build-visualstudio-debug/CMakeFiles/CG_Lab2.dir",
+	"sources" : 
+	{
+		"CMakeFiles/CG_Lab2.dir/Framework/Application.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Gits/CompGraph/CG.Lab2/Framework/Application.cpp"
+		},
+		"CMakeFiles/CG_Lab2.dir/Framework/Graphics.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Gits/CompGraph/CG.Lab2/Framework/Graphics.cpp"
+		},
+		"CMakeFiles/CG_Lab2.dir/Framework/Renderer.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Gits/CompGraph/CG.Lab2/Framework/Renderer.cpp"
+		},
+		"CMakeFiles/CG_Lab2.dir/Framework/Window.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Gits/CompGraph/CG.Lab2/Framework/Window.cpp"
+		},
+		"CMakeFiles/CG_Lab2.dir/WinMain.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Gits/CompGraph/CG.Lab2/WinMain.cpp"
+		}
+	}
+}

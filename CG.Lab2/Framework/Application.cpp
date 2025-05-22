@@ -3,69 +3,70 @@
 //
 
 #include "Application.h"
-#include <stdexcept>
 
-Application::Application(HINSTANCE hInstance)
-    : hInstance(hInstance), hwnd(nullptr), graphics(nullptr), renderer(nullptr) {}
-
-Application::~Application() {
-    delete renderer;
-    delete graphics;
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_KEYDOWN && wParam == VK_ESCAPE) {
+        PostQuitMessage(0);
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-bool Application::Initialize() {
-    if (!InitWindow()) return false;
+Application::Application() : hWnd(nullptr) {}
+Application::~Application() {}
 
-    graphics = new Graphics(hwnd, width, height);
-    if (!graphics->Initialize()) return false;
+bool Application::InitWindow(HINSTANCE hInstance) {
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc,
+                      0, 0, hInstance, LoadIcon(nullptr, IDI_WINLOGO), LoadCursor(nullptr, IDC_ARROW),
+                      (HBRUSH)GetStockObject(BLACK_BRUSH), nullptr, applicationName, LoadIcon(nullptr, IDI_WINLOGO) };
 
-    renderer = new Renderer(graphics);
+    RegisterClassEx(&wc);
+
+    RECT rect = { 0, 0, (LONG)screenWidth, (LONG)screenHeight };
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+
+    hWnd = CreateWindow(applicationName, applicationName,
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+        rect.right - rect.left, rect.bottom - rect.top,
+        nullptr, nullptr, hInstance, nullptr);
+
+    if (!hWnd) return false;
+
+    ShowWindow(hWnd, SW_SHOW);
+    UpdateWindow(hWnd);
     return true;
 }
 
-void Application::Run() {
+bool Application::Initialize(HINSTANCE hInstance) {
+    if (!InitWindow(hInstance)) return false;
+    if (!renderer.Initialize(hWnd, screenWidth, screenHeight)) return false;
+    return true;
+}
+
+int Application::Run() {
     MSG msg = {};
+    auto prevTime = std::chrono::steady_clock::now();
+
     while (msg.message != WM_QUIT) {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         } else {
-            Render();  // вызываем отрисовку каждый кадр
+            auto currentTime = std::chrono::steady_clock::now();
+            float deltaTime = std::chrono::duration<float>(currentTime - prevTime).count();
+            prevTime = currentTime;
+
+            Update(deltaTime);
+            Render();
         }
     }
+
+    return static_cast<int>(msg.wParam);
 }
 
-
-bool Application::InitWindow() {
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = Application::WndProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = windowClassName;
-
-    RegisterClass(&wc);
-
-    RECT rect = { 0, 0, width, height };
-    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-
-    hwnd = CreateWindowEx(
-        0, windowClassName, L"My DirectX App",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        rect.right - rect.left, rect.bottom - rect.top,
-        nullptr, nullptr, hInstance, nullptr);
-
-    if (!hwnd) return false;
-
-    ShowWindow(hwnd, SW_SHOW);
-    return true;
+void Application::Update(float deltaTime) {
+    renderer.Update(deltaTime);
 }
 
-LRESULT CALLBACK Application::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (msg == WM_DESTROY) {
-        PostQuitMessage(0);
-        return 0;
-    }
-    return DefWindowProc(hwnd, msg, wParam, lParam);
+void Application::Render() {
+    renderer.Render();
 }
-
-

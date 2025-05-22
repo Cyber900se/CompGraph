@@ -1,0 +1,3 @@
+C:/Gits/CompGraph/CG.Lab2/cmake-build-release/CMakeFiles/CG_Lab2.dir
+C:/Gits/CompGraph/CG.Lab2/cmake-build-release/CMakeFiles/edit_cache.dir
+C:/Gits/CompGraph/CG.Lab2/cmake-build-release/CMakeFiles/rebuild_cache.dir

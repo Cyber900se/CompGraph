@@ -4,16 +4,27 @@
 
 #include "Renderer.h"
 
-Renderer::Renderer(Graphics* gfx)
-    : m_gfx(gfx) {}
+Renderer::Renderer() : hWnd(nullptr) {}
+Renderer::~Renderer() {}
 
-void Renderer::RenderFrame() {
-    // Очистка экрана
-    m_gfx->Clear(0.1f, 0.1f, 0.1f, 1.0f);
+bool Renderer::Initialize(HWND hWnd, UINT width, UINT height) {
+    this->hWnd = hWnd;
+    return graphics.Initialize(hWnd, width, height);
+}
 
-    // Рисуем примитивы (двойной треугольник = прямоугольник)
-    m_gfx->DrawIndexed(6);
+void Renderer::Update(float deltaTime) {
+    totalTime += deltaTime;
+    frameCount++;
 
-    // Отображаем результат
-    m_gfx->Present();
+    if (totalTime >= 1.0f) {
+        float fps = frameCount / totalTime;
+        std::wstring title = L"My3DApp - FPS: " + std::to_wstring(fps);
+        SetWindowText(hWnd, title.c_str());
+        totalTime = 0.0f;
+        frameCount = 0;
+    }
+}
+
+void Renderer::Render() {
+    graphics.Render();
 }

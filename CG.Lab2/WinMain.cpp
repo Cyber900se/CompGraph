@@ -1,9 +1,9 @@
 ﻿#include "Framework/Application.h"
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    Application app(hInstance);
-    if (!app.Initialize()) return -1;
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
+    Application app;
+    if (!app.Initialize(hInstance)) {
+        return -1;
+    }
     return app.Run();
 }
-
-
