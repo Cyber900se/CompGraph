@@ -7,7 +7,6 @@
 
 #pragma once
 #include <windows.h>
-#include <string>
 #include "Graphics.h"
 
 class Renderer {

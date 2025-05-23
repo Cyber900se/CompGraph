@@ -6,9 +6,11 @@
 #define APPLICATION_H
 
 #pragma once
-#include <windows.h>
-#include <chrono>
+#include "Window.h"
+#include "Graphics.h"
 #include "Renderer.h"
+#include <chrono>
+
 
 class Application {
 public:
@@ -19,15 +21,15 @@ public:
     int Run();
 
 private:
+    Window* window = nullptr;
+    Renderer renderer;
+
     bool InitWindow(HINSTANCE hInstance);
     void Update(float deltaTime);
     void Render();
 
-    HWND hWnd;
-    LPCWSTR applicationName = L"My3DApp";
-    unsigned int screenWidth = 800;
-    unsigned int screenHeight = 800;
-    Renderer renderer;
+    int width = 800;
+    int height = 800;
 };
 
 #endif //APPLICATION_H

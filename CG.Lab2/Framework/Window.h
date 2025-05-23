@@ -7,18 +7,21 @@
 
 #pragma once
 #include <windows.h>
+#include <iostream>
 
 class Window {
 public:
-    bool Initialize(HINSTANCE hInstance, int width, int height, LPCWSTR title);
-    void Show();
-    [[nodiscard]] HWND GetHWND() const { return m_hwnd; }
+    Window(HINSTANCE hInstance, const wchar_t* title, UINT width, UINT height);
+    ~Window();
 
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam);
+    HWND GetHWND() const { return hwnd; }
+    bool ProcessMessages();
 
 private:
-    HWND m_hwnd;
-    HINSTANCE m_hInstance;
+    HWND hwnd;
+    HINSTANCE hInstance;
+    static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
+
 
 #endif //WINDOW_H
