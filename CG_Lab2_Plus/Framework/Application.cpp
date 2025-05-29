@@ -18,7 +18,7 @@ bool Application::InitWindow(HINSTANCE hInstance) {
 }
 
 bool Application::Initialize(HINSTANCE hInstance) {
-    if (!InitWindow(hInstance)) return false;
+    InitWindow(hInstance);
     if (!renderer.Initialize(window->GetHWND(), width, height)) return false;
     return true;
 }
