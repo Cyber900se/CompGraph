@@ -13,6 +13,7 @@
 #include <array>
 #include <iostream>
 #include <DirectXMath.h>
+#include <cmath>
 
 class Graphics {
 public:

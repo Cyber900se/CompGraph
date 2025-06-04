@@ -4,9 +4,9 @@
 
 #include "Graphics.h"
 
-
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+
 
 struct VSConstants {
     DirectX::XMMATRIX world;
@@ -20,7 +20,7 @@ Graphics::~Graphics() {}
 bool Graphics::Initialize(HWND hWnd, UINT width, UINT height) {
     if (!InitDeviceAndSwapChain(hWnd, width, height)) return false;
     if (!InitShaders(hWnd)) return false;
-    InitGeometry();
+    if (!InitGeometry()) return false;
     return true;
 }
 
@@ -47,13 +47,26 @@ bool Graphics::InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height) {
 
     if (FAILED(D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE,
         nullptr, D3D11_CREATE_DEVICE_DEBUG,featureLevel, 1,
-        D3D11_SDK_VERSION, &swapDesc, &swapChain,
-        &device, nullptr, &context)))
+        D3D11_SDK_VERSION, &swapDesc, &swapChain, &device, nullptr, &context)))
         return false;
 
     ID3D11Texture2D* backTex;
     swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backTex);
     device->CreateRenderTargetView(backTex, nullptr, &renderTargetView);
+
+    D3D11_TEXTURE2D_DESC depthDesc = {};
+    depthDesc.Width = width;
+    depthDesc.Height = height;
+    depthDesc.MipLevels = 1;
+    depthDesc.ArraySize = 1;
+    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthDesc.SampleDesc.Count = 1;
+    depthDesc.Usage = D3D11_USAGE_DEFAULT;
+    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> depthBuffer;
+    device->CreateTexture2D(&depthDesc, nullptr, &depthBuffer);
+    device->CreateDepthStencilView(depthBuffer.Get(), nullptr, &depthStencilView);
 
     CD3D11_RASTERIZER_DESC rastDesc = {};
     rastDesc.CullMode = D3D11_CULL_NONE;
@@ -143,6 +156,7 @@ bool Graphics::InitShaders(HWND hWnd) {
         vsBlob->GetBufferPointer(),
         vsBlob->GetBufferSize(),
         &inputLayout);
+
     return true;
 }
 
@@ -158,10 +172,10 @@ bool Graphics::InitGeometry() {
     D3D11_BUFFER_DESC vertexBufDesc = {};
     vertexBufDesc.Usage = D3D11_USAGE_DEFAULT;
     vertexBufDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vertexBufDesc.ByteWidth = sizeof(DirectX::XMFLOAT4) * std::size(points);
     vertexBufDesc.CPUAccessFlags = 0;
     vertexBufDesc.MiscFlags = 0;
     vertexBufDesc.StructureByteStride = 0;
-    vertexBufDesc.ByteWidth = sizeof(DirectX::XMFLOAT4) * std::size(points);
 
     D3D11_SUBRESOURCE_DATA vertexData = {};
     vertexData.pSysMem = points;
@@ -184,24 +198,27 @@ bool Graphics::InitGeometry() {
 
     device->CreateBuffer(&indexBufDesc, &indexData, &indexBuffer);
     context->ClearState();
+
     return true;
 }
 
 void Graphics::Render(float totalTime, float width, float height) {
-
     context->RSSetState(rastState);
 
     float x = totalTime * 0.5f;
     float y = sinf(totalTime) * 0.5f;
     DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
 
-    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(
+    /*DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(
         DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f),
         DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f),
-        DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+        DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));*/
 
-    DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(
-        DirectX::XM_PIDIV4, width / height, 0.1f, 100.0f);
+    DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
+
+    /*DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(
+        DirectX::XM_PIDIV4, width / height, 0.1f, 100.0f);*/
+    DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicLH(width, height, 0.1f, 10.0f);
 
     VSConstants vsConst = {
         XMMatrixTranspose(world),
@@ -211,8 +228,7 @@ void Graphics::Render(float totalTime, float width, float height) {
 
     context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
 
-    UINT strides[] = { 32 };
-    UINT offsets[] = { 0 };
+
 
     D3D11_VIEWPORT viewport = {};
     viewport.Width = width;
@@ -222,6 +238,9 @@ void Graphics::Render(float totalTime, float width, float height) {
     viewport.MinDepth = 0;
     viewport.MaxDepth = 1.0f;
     context->RSSetViewports(1, &viewport);
+
+    UINT strides[] = { 32 };
+    UINT offsets[] = { 0 };
 
     context->IASetInputLayout(inputLayout);
     context->IASetVertexBuffers(0, 1, &vertexBuffer, strides, offsets);
@@ -237,7 +256,6 @@ void Graphics::Render(float totalTime, float width, float height) {
     context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
     context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
-
     context->DrawIndexed(6, 0, 0);
     swapChain->Present(1, 0);
 }
