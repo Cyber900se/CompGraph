@@ -160,12 +160,12 @@ bool Graphics::InitShaders(HWND hWnd) {
     return true;
 }
 
-bool Graphics::InitGeometry() {
+/*bool Graphics::InitGeometry() {
     DirectX::XMFLOAT4 points[] = {
-        DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f),	DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f),
-        DirectX::XMFLOAT4(-0.5f, -0.5f, 0.5f, 1.0f), DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f),
-        DirectX::XMFLOAT4(0.5f, -0.5f, 0.5f, 1.0f), DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f),
-        DirectX::XMFLOAT4(-0.5f, 0.5f, 0.5f, 1.0f), DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+        DirectX::XMFLOAT4(0.25f, 0.25f, 0.5f, 1.0f),	DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f),
+        DirectX::XMFLOAT4(-0.25f, -0.25f, 0.5f, 1.0f), DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f),
+        DirectX::XMFLOAT4(0.25f, -0.25f, 0.5f, 1.0f), DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f),
+        DirectX::XMFLOAT4(-0.25f, 0.25f, 0.5f, 1.0f), DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
     };
     int indices[] = { 0, 1, 2, 0, 3, 1 };
 
@@ -200,35 +200,105 @@ bool Graphics::InitGeometry() {
     context->ClearState();
 
     return true;
+}*/
+
+bool Graphics::InitGeometry() {
+    const int numSegments = 64;
+    const float radius = 0.25f;
+
+    struct Vertex {
+        DirectX::XMFLOAT4 pos;
+        DirectX::XMFLOAT4 col;
+    };
+
+    std::vector<Vertex> vertices;
+    std::vector<UINT> indices;
+
+    // Центр круга
+    vertices.push_back({
+        DirectX::XMFLOAT4(0.0f, 0.0f, 0.5f, 1.0f),
+        DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f)
+    });
+
+    // Вершины по окружности
+    for (int i = 0; i <= numSegments; ++i) {
+        float angle = DirectX::XM_2PI * i / numSegments;
+        float x = cosf(angle) * radius;
+        float y = sinf(angle) * radius;
+
+        vertices.push_back({
+            DirectX::XMFLOAT4(x, y, 0.5f, 1.0f),
+            DirectX::XMFLOAT4(
+                0.5f + 0.5f * cosf(angle),
+                0.5f + 0.5f * sinf(angle),
+                1.0f,
+                1.0f)
+        });
+    }
+
+    // Индексы — "треугольный фан"
+    for (UINT i = 1; i <= numSegments; ++i) {
+        indices.push_back(0);        // центр
+        indices.push_back(i);
+        indices.push_back(i + 1 <= numSegments ? i + 1 : 1); // wrap
+    }
+
+    // Создание vertex buffer
+    D3D11_BUFFER_DESC vertexBufDesc = {};
+    vertexBufDesc.Usage = D3D11_USAGE_DEFAULT;
+    vertexBufDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vertexBufDesc.ByteWidth = UINT(vertices.size() * sizeof(Vertex));
+    vertexBufDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA vertexData = {};
+    vertexData.pSysMem = vertices.data();
+
+    HRESULT hr = device->CreateBuffer(&vertexBufDesc, &vertexData, &vertexBuffer);
+    if (FAILED(hr)) return false;
+
+    // Создание index buffer
+    D3D11_BUFFER_DESC indexBufDesc = {};
+    indexBufDesc.Usage = D3D11_USAGE_DEFAULT;
+    indexBufDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    indexBufDesc.ByteWidth = UINT(indices.size() * sizeof(UINT));
+    indexBufDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA indexData = {};
+    indexData.pSysMem = indices.data();
+
+    hr = device->CreateBuffer(&indexBufDesc, &indexData, &indexBuffer);
+    if (FAILED(hr)) return false;
+
+    // Устанавливаем количество индексов (если нужно в будущем)
+    indexCount = UINT(indices.size());
+
+    context->ClearState();
+    return true;
 }
+
 
 void Graphics::Render(float totalTime, float width, float height) {
     context->RSSetState(rastState);
 
-    float x = totalTime * 0.5f;
-    float y = sinf(totalTime) * 0.5f;
-    DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
+    //float x = -1.0f + totalTime * 0.3f;
+    float y = sinf(totalTime * 2.0f) * 0.3f;
+    //DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
 
-    /*DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(
-        DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f),
-        DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f),
-        DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));*/
+    DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);     // Камера немного позади объекта по Z
+    DirectX::XMVECTOR focusPos = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);   // Смотрит на центр
+    DirectX::XMVECTOR upDir = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);       // Вверх — по Y
 
-    DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
+    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eyePos, focusPos, upDir);
 
-    /*DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(
-        DirectX::XM_PIDIV4, width / height, 0.1f, 100.0f);*/
-    DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicLH(width, height, 0.1f, 10.0f);
+    DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicLH(2.0f, 2.0f, 0.1f, 10.0f);
 
-    VSConstants vsConst = {
-        XMMatrixTranspose(world),
-        XMMatrixTranspose(view),
-        XMMatrixTranspose(proj)
+    /*VSConstants vsConst = {
+        world,
+        view,
+        proj
     };
 
-    context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
-
-
+    context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);*/
 
     D3D11_VIEWPORT viewport = {};
     viewport.Width = width;
@@ -256,6 +326,38 @@ void Graphics::Render(float totalTime, float width, float height) {
     context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
     context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
-    context->DrawIndexed(6, 0, 0);
+
+    struct InstanceData {
+        float offsetX;
+        float offsetY;
+        float amplitude;
+        float speed;
+    };
+
+    std::vector<InstanceData> instances = {
+        { -1.0f,  0.5f, 0.1f, 1.0f },
+        { -0.3f,  0.3f, 0.2f, 1.5f },
+        {  0.4f,  0.0f, 0.3f, 2.0f },
+        {  1.0f, -0.4f, 0.15f, 2.5f }
+    };
+
+    for (const auto& inst : instances) {
+        float x = -1.0f + totalTime * 0.3f;
+        float y = inst.offsetY + sinf(totalTime * inst.speed) * inst.amplitude;
+
+        DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
+
+        VSConstants vsConst = {
+            world,
+            view,
+            proj
+        };
+
+        context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
+        //context->DrawIndexed(6, 0, 0);
+        context->DrawIndexed(indexCount, 0, 0);
+
+    }
+
     swapChain->Present(1, 0);
 }

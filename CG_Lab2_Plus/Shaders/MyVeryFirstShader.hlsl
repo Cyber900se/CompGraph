@@ -17,11 +17,9 @@ struct PS_IN {
 
 PS_IN VSMain(VS_IN input) {
 	PS_IN output;
-
-	float4 worldPos = mul(world, input.pos);
-	float4 viewPos  = mul(view, worldPos);
-	output.pos = mul(projection, viewPos);
-
+	float4 worldPos = mul(input.pos, world);
+	float4 viewPos = mul(worldPos, view);
+	output.pos = mul(viewPos, projection);
 	output.col = input.col;
 	return output;
 }

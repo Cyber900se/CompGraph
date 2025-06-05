@@ -14,6 +14,7 @@
 #include <iostream>
 #include <DirectXMath.h>
 #include <cmath>
+#include <vector>
 
 class Graphics {
 public:
@@ -28,6 +29,8 @@ private:
     bool InitShaders(HWND hWnd);
     bool InitGeometry();
 
+
+    UINT indexCount = 0;
     Microsoft::WRL::ComPtr<ID3D11Device> device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
     Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;
@@ -41,6 +44,7 @@ private:
     ID3D11Buffer* indexBuffer;
     ID3D11Buffer* constantBuffer;
     ID3D11RasterizerState* rastState;
+
 };
 
 
