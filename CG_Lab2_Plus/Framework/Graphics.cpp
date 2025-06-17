@@ -1,8 +1,4 @@
-﻿//
-// Created by gentletrombone on 22.05.2025.
-//
-
-#include "Graphics.h"
+﻿#include "Graphics.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -236,14 +232,12 @@ bool Graphics::InitGeometry() {
         });
     }
 
-    // Индексы — "треугольный фан"
     for (UINT i = 1; i <= numSegments; ++i) {
         indices.push_back(0);        // центр
         indices.push_back(i);
         indices.push_back(i + 1 <= numSegments ? i + 1 : 1); // wrap
     }
 
-    // Создание vertex buffer
     D3D11_BUFFER_DESC vertexBufDesc = {};
     vertexBufDesc.Usage = D3D11_USAGE_DEFAULT;
     vertexBufDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -256,7 +250,6 @@ bool Graphics::InitGeometry() {
     HRESULT hr = device->CreateBuffer(&vertexBufDesc, &vertexData, &vertexBuffer);
     if (FAILED(hr)) return false;
 
-    // Создание index buffer
     D3D11_BUFFER_DESC indexBufDesc = {};
     indexBufDesc.Usage = D3D11_USAGE_DEFAULT;
     indexBufDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -269,7 +262,6 @@ bool Graphics::InitGeometry() {
     hr = device->CreateBuffer(&indexBufDesc, &indexData, &indexBuffer);
     if (FAILED(hr)) return false;
 
-    // Устанавливаем количество индексов (если нужно в будущем)
     indexCount = UINT(indices.size());
 
     context->ClearState();
@@ -281,24 +273,16 @@ void Graphics::Render(float totalTime, float width, float height) {
     context->RSSetState(rastState);
 
     //float x = -1.0f + totalTime * 0.3f;
-    float y = sinf(totalTime * 2.0f) * 0.3f;
+    //float y = sinf(totalTime * 2.0f) * 0.3f;
     //DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
 
-    DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);     // Камера немного позади объекта по Z
+    DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);     // Камера немного позади объекта по Z
     DirectX::XMVECTOR focusPos = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);   // Смотрит на центр
     DirectX::XMVECTOR upDir = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);       // Вверх — по Y
 
     DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eyePos, focusPos, upDir);
 
     DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicLH(2.0f, 2.0f, 0.1f, 10.0f);
-
-    /*VSConstants vsConst = {
-        world,
-        view,
-        proj
-    };
-
-    context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);*/
 
     D3D11_VIEWPORT viewport = {};
     viewport.Width = width;
@@ -336,25 +320,25 @@ void Graphics::Render(float totalTime, float width, float height) {
 
     std::vector<InstanceData> instances = {
         { -1.0f,  0.5f, 0.1f, 1.0f },
-        { -0.3f,  0.3f, 0.2f, 1.5f },
-        {  0.4f,  0.0f, 0.3f, 2.0f },
-        {  1.0f, -0.4f, 0.15f, 2.5f }
+        { -1.0f,  0.3f, 0.2f, 1.5f },
+        {  -1.0f,  0.0f, 0.3f, 2.0f },
+        {  -1.0f, -0.4f, 0.15f, 2.5f }
     };
 
     for (const auto& inst : instances) {
-        float x = -1.0f + totalTime * 0.3f;
-        float y = inst.offsetY + sinf(totalTime * inst.speed) * inst.amplitude;
+        float x = inst.offsetX + totalTime * inst.speed * 0.1f; // скорость вправо
+        float y = inst.offsetY + sinf(totalTime) * inst.amplitude;
 
         DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
 
         VSConstants vsConst = {
-            world,
-            view,
-            proj
+            XMMatrixTranspose(world),
+            XMMatrixTranspose(view),
+            XMMatrixTranspose(proj)
         };
 
         context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
-        //context->DrawIndexed(6, 0, 0);
+
         context->DrawIndexed(indexCount, 0, 0);
 
     }
