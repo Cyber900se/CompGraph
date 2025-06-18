@@ -276,7 +276,7 @@ void Graphics::Render(float totalTime, float width, float height) {
     //float y = sinf(totalTime * 2.0f) * 0.3f;
     //DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
 
-    DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);     // Камера немного позади объекта по Z
+    DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -7.0f, 1.0f);     // Камера немного позади объекта по Z
     DirectX::XMVECTOR focusPos = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);   // Смотрит на центр
     DirectX::XMVECTOR upDir = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);       // Вверх — по Y
 
@@ -326,7 +326,8 @@ void Graphics::Render(float totalTime, float width, float height) {
     };
 
     for (const auto& inst : instances) {
-        float x = inst.offsetX + totalTime * inst.speed * 0.1f; // скорость вправо
+
+        float x = inst.offsetX + totalTime * inst.speed * 0.1f;
         float y = inst.offsetY + sinf(totalTime) * inst.amplitude;
 
         DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(x, y, 0.0f);
@@ -340,7 +341,6 @@ void Graphics::Render(float totalTime, float width, float height) {
         context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
 
         context->DrawIndexed(indexCount, 0, 0);
-
     }
 
     swapChain->Present(1, 0);

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.31)
-project(CG_Lab3)
+project(CG_Lab4)
 
 set(CMAKE_CXX_STANDARD 20)
 
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 
-add_executable(CG_Lab3 WIN32 WinMain.cpp
+add_executable(CG_Lab4 WIN32 WinMain.cpp
         Framework/Application.cpp
         Framework/Application.h
         Framework/Window.cpp
@@ -26,5 +26,4 @@ set(LIBS
         d3dcompiler
         dxguid)
 
-target_link_libraries(CG_Lab3 ${LIBS})
-
+target_link_libraries(CG_Lab4 ${LIBS})
