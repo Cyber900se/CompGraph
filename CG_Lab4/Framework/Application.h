@@ -22,13 +22,16 @@ public:
 private:
     Window* window = nullptr;
     Renderer renderer;
+    UINT width = 900;
+    UINT height = 900;
+    static inline const wchar_t* applicationName = L"Solar System";
 
     bool InitWindow(HINSTANCE hInstance);
     void Update(float deltaTime);
     void Render();
+    void HandleResize(UINT width, UINT height);
+    void HandleInput(const InputHandler& input, float deltaTime);
 
-    int width = 900;
-    int height = 900;
 };
 
 #endif //APPLICATION_H

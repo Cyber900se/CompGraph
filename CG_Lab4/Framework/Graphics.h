@@ -10,11 +10,13 @@
 #include <d3d11.h>
 #include <wrl.h>
 #include <d3dcompiler.h>
-#include <array>
-#include <iostream>
 #include <DirectXMath.h>
-#include <cmath>
 #include <vector>
+
+#include "InputHandler.h"
+#include "Cameras/Camera.h"
+#include "Cameras/FPSCamera.h"
+#include "Cameras/OrbitCamera.h"
 
 class Graphics {
 public:
@@ -23,38 +25,21 @@ public:
 
     bool Initialize(HWND hWnd, UINT width, UINT height);
     void Render(float totalTime, float width, float height);
-    void MoveLeftPaddle(float dy);
-    void MoveRightPaddle(float dy);
     void Update(float deltaTime);
-    int GetLeftPlayerScore() const { return leftPlayerScore; }
-    int GetRightPlayerScore() const { return rightPlayerScore; }
+    void Resize(UINT width, UINT height);
+    void ToggleCamera();
+
+    void HandleInput(const InputHandler &input, float deltaTime);
+
+    Camera* GetCurrentCamera() const { return currentCamera; }
 private:
     struct RenderObject;
     bool InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height);
     bool InitShaders(HWND hWnd);
-    RenderObject CreateRectangleMesh(float meshWidth, float meshHeight, DirectX::XMFLOAT4 color);
-    RenderObject CreateCircleMesh(float meshSegments, float meshRadius);
+    RenderObject CreateCubeMesh(float size, const DirectX::XMFLOAT4& color);
     bool InitGeometry();
-    void ResetBall();
-    void CreateBackground();
-    int leftPlayerScore = 0;
-    int rightPlayerScore = 0;
+    bool InitCamera();
 
-    // Background shaders
-    ID3D11VertexShader* backgroundVS = nullptr;
-    ID3D11PixelShader* backgroundPS = nullptr;
-    ID3D11InputLayout* backgroundLayout = nullptr;
-    ID3D11Buffer* backgroundVB;
-    ID3D11Buffer* backgroundIB;
-    int backgroundVertexCount = 0;
-    // Object shaders
-    ID3D11VertexShader* objectVS = nullptr;
-    ID3D11PixelShader* objectPS = nullptr;
-    ID3D11InputLayout* objectLayout = nullptr;
-
-
-    std::vector<RenderObject> objects;
-    UINT indexCount = 0;
     Microsoft::WRL::ComPtr<ID3D11Device> device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
     Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;
@@ -68,7 +53,16 @@ private:
     ID3D11Buffer* indexBuffer;
     ID3D11Buffer* constantBuffer;
     ID3D11RasterizerState* rastState;
-    ID3D11DepthStencilState* depthStencilState = nullptr;
+    ID3D11DepthStencilState* depthStencilState;
+
+    Camera* currentCamera;
+    FPSCamera fpsCamera;
+    OrbitCamera orbitCamera;
+    bool useOrbitCamera = true;
+
+    std::vector<RenderObject> objects;
+    UINT width = 0;
+    UINT height = 0;
 };
 
 

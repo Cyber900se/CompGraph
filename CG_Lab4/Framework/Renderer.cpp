@@ -5,10 +5,11 @@ Renderer::~Renderer() {}
 
 bool Renderer::Initialize(HWND hWnd, UINT width, UINT height) {
     this->hWnd = hWnd;
-    return graphics.Initialize(hWnd, width, height);
+    graphics.Initialize(hWnd, width, height);
+    return initialized;
 }
 
-void Renderer::Update(float deltaTime) {
+void Renderer::Update(float deltaTime, const wchar_t* applicationName) {
     totalTime += deltaTime;
     timeAccumulator += deltaTime;
     frameCount++;
@@ -18,11 +19,7 @@ void Renderer::Update(float deltaTime) {
         timeAccumulator -= 1.0f;
 
         WCHAR text[256];
-        swprintf_s(text, ARRAYSIZE(text),
-                  L"Pong | Left: %d - Right: %d | FPS: %.1f",
-                  graphics.GetLeftPlayerScore(),
-                  graphics.GetRightPlayerScore(),
-                  fps);
+        swprintf_s(text, ARRAYSIZE(text), L"%s FPS: %.1f", applicationName, fps);
 
         SetWindowTextW(hWnd, text);
 
@@ -35,10 +32,10 @@ void Renderer::Render(float width, float height) {
     graphics.Render(totalTime, width, height);
 }
 
-void Renderer::MoveLeftPaddle(float dy) {
-    graphics.MoveLeftPaddle(dy);
+void Renderer::Resize(UINT width, UINT height) {
+    graphics.Resize(width, height);
 }
 
-void Renderer::MoveRightPaddle(float dy) {
-    graphics.MoveRightPaddle(dy);
+void Renderer::HandleInput(const InputHandler& input, float deltaTime) {
+    graphics.HandleInput(input, deltaTime);
 }

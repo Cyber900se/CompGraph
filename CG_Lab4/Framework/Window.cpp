@@ -4,7 +4,7 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
     Window* pThis = nullptr;
     if (umessage == WM_NCCREATE) {
         CREATESTRUCT* create = reinterpret_cast<CREATESTRUCT*>(lparam);
-        pThis = reinterpret_cast<Window*>(create->lpCreateParams);
+        pThis = static_cast<Window*>(create->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
     } else {
         pThis = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
@@ -13,11 +13,60 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
     if (pThis) {
         switch (umessage) {
             case WM_KEYDOWN:
-                pThis->inputHandler.SetKeyDown(static_cast<UINT>(wparam));
-                return 0;
+                pThis->inputHandler.SetKeyDown(static_cast<Keys>(wparam));
+                break;
             case WM_KEYUP:
-                pThis->inputHandler.SetKeyUp(static_cast<UINT>(wparam));
+                pThis->inputHandler.SetKeyUp(static_cast<Keys>(wparam));
+                break;
+            case WM_MOUSEMOVE: {
+                UINT x = static_cast<short>(LOWORD(lparam));
+                UINT y = static_cast<short>(HIWORD(lparam));
+                pThis->inputHandler.SetMousePosition(x, y);
+                break;
+            }
+            case WM_LBUTTONDOWN:
+                pThis->inputHandler.SetMouseButtonDown(Keys::LeftButton);
+                break;
+            case WM_LBUTTONUP:
+                pThis->inputHandler.SetMouseButtonUp(Keys::LeftButton);
+                break;
+
+            case WM_RBUTTONDOWN:
+                pThis->inputHandler.SetMouseButtonDown(Keys::RightButton);
+                break;
+
+            case WM_RBUTTONUP:
+                pThis->inputHandler.SetMouseButtonUp(Keys::RightButton);
+                break;
+
+            case WM_MBUTTONDOWN:
+                pThis->inputHandler.SetMouseButtonDown(Keys::MiddleButton);
+                break;
+
+            case WM_MBUTTONUP:
+                pThis->inputHandler.SetMouseButtonUp(Keys::MiddleButton);
+                break;
+
+            case WM_XBUTTONUP: {
+                if (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) {
+                    pThis->inputHandler.SetMouseButtonUp(Keys::MouseButtonX1);
+                } else if (GET_XBUTTON_WPARAM(wparam) == XBUTTON2) {
+                    pThis->inputHandler.SetMouseButtonUp(Keys::MouseButtonX2);
+                }
+                break;
+            }
+            case WM_MOUSEWHEEL: {
+                int delta = static_cast<short>(HIWORD(wparam));
+                pThis->inputHandler.AddMouseWheelDelta(delta);
                 return 0;
+            }
+            case WM_SIZE: {
+                UINT width = LOWORD(lparam);
+                UINT height = HIWORD(lparam);
+                pThis->SetSize(width, height);
+                pThis->sizeChanged = true;
+                return 0;
+            }
             case WM_DESTROY:
                 PostQuitMessage(0);
                 return 0;
@@ -26,7 +75,7 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
     return DefWindowProc(hwnd, umessage, wparam, lparam);
 }
 
-Window::Window(HINSTANCE hInst, static const wchar_t* applicationName, UINT width, UINT height)
+Window::Window(HINSTANCE hInst, const wchar_t* applicationName, UINT width, UINT height)
     : hInstance(hInst) {
 
     WNDCLASSEX wc = {};
@@ -79,6 +128,17 @@ Window::~Window() {
     if (hwnd) {
         DestroyWindow(hwnd);
     }
+}
+
+void Window::SetSize(UINT width, UINT height) {
+    this->width = width;
+    this->height = height;
+}
+
+bool Window::CheckSizeChanged() {
+    bool changed = sizeChanged;
+    sizeChanged = false;
+    return changed;
 }
 
 bool Window::ProcessMessages() {

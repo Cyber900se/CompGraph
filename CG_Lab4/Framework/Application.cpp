@@ -6,20 +6,13 @@ Application::Application() {}
 Application::~Application() {}
 
 bool Application::InitWindow(HINSTANCE hInstance) {
-    static const wchar_t* applicationName = L"MyD3D11App";
     window = new Window(hInstance, applicationName, width, height);
-
-    return window->GetHWND() && IsWindow(window->GetHWND());
+    return window->GetHWND() != nullptr;
 }
 
 bool Application::Initialize(HINSTANCE hInstance) {
     if (!InitWindow(hInstance)) {
         MessageBox(nullptr, L"Window creation failed", L"Error", MB_OK);
-        return false;
-    }
-
-    if (!window->GetHWND() || !IsWindow(window->GetHWND())) {
-        MessageBox(nullptr, L"Invalid window handle", L"Error", MB_OK);
         return false;
     }
 
@@ -38,6 +31,16 @@ int Application::Run() {
         float deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(curTime - prevTime).count() / 1000000.0f;
         prevTime = curTime;
 
+        if (window->CheckSizeChanged()) {
+            HandleResize(window->GetWidth(), window->GetHeight());
+        }
+
+        InputHandler& input = window->GetInputHandler();
+
+        input.ResetFrameState();
+
+        HandleInput(input, deltaTime);
+
         Update(deltaTime);
         Render();
     }
@@ -45,28 +48,28 @@ int Application::Run() {
 }
 
 void Application::Update(float deltaTime) {
-    InputHandler& input = window->GetInputHandler();
-    const float paddleSpeed = 1.5f * deltaTime;
+    renderer.HandleInput(window->GetInputHandler(), deltaTime);
+    renderer.Update(deltaTime, applicationName);
+}
 
-    if (input.IsKeyDown('W')) {
-        renderer.MoveLeftPaddle(paddleSpeed);
-    }
-    if (input.IsKeyDown('S')) {
-        renderer.MoveLeftPaddle(-paddleSpeed);
-    }
+void Application::HandleResize(UINT newWidth, UINT newHeight) {
+    width = newWidth;
+    height = newHeight;
 
-    if (input.IsKeyDown(VK_UP)) {
-        renderer.MoveRightPaddle(paddleSpeed);
-    }
-    if (input.IsKeyDown(VK_DOWN)) {
-        renderer.MoveRightPaddle(-paddleSpeed);
+    if (window) {
+        window->SetSize(width, height);
     }
 
-    if (input.IsKeyDown(VK_ESCAPE)) {
+    if (renderer.IsInitialized()) {
+        renderer.Resize(width, height);
+    }
+}
+
+void Application::HandleInput(const InputHandler& input, float deltaTime) {
+    if (input.IsKeyDown(Keys::Escape)) {
         PostQuitMessage(0);
     }
-
-    renderer.Update(deltaTime);
+    renderer.HandleInput(input, deltaTime);
 }
 
 void Application::Render() {
