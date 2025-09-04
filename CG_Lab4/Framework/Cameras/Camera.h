@@ -1,7 +1,3 @@
-//
-// Created by kron2 on 19.06.2025.
-//
-
 #ifndef CAMERA_H
 #define CAMERA_H
 
@@ -23,7 +19,5 @@ class Camera {
         virtual void Rotate(float dx, float dy) = 0;
         virtual void Zoom(float amount) = 0;
 };
-
-
 
 #endif //CAMERA_H

@@ -9,14 +9,15 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <wrl.h>
-#include <d3dcompiler.h>
 #include <DirectXMath.h>
-#include <vector>
+#include <memory>
+#include <d3dcompiler.h>
 
 #include "InputHandler.h"
 #include "Cameras/Camera.h"
 #include "Cameras/FPSCamera.h"
 #include "Cameras/OrbitCamera.h"
+#include "Geometry/Scene.h"
 
 class Graphics {
 public:
@@ -25,20 +26,32 @@ public:
 
     bool Initialize(HWND hWnd, UINT width, UINT height);
     void Render(float totalTime, float width, float height);
-    void Update(float deltaTime);
+    void Update(float deltaTime, InputHandler& input);
     void Resize(UINT width, UINT height);
-    void ToggleCamera();
-
     void HandleInput(const InputHandler &input, float deltaTime);
 
-    Camera* GetCurrentCamera() const { return currentCamera; }
 private:
+    struct VSConstants {
+        DirectX::XMMATRIX world;
+        DirectX::XMMATRIX view;
+        DirectX::XMMATRIX projection;
+    };
+
+    enum class ProjectionMode {
+        Normal,
+        Wide,
+        Narrow,
+        Ortho
+    };
+
     struct RenderObject;
+
     bool InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height);
     bool InitShaders(HWND hWnd);
-    RenderObject CreateCubeMesh(float size, const DirectX::XMFLOAT4& color);
-    bool InitGeometry();
     bool InitCamera();
+
+    void ToggleCamera();
+    void UpdateProjection(UINT width, UINT height);
 
     Microsoft::WRL::ComPtr<ID3D11Device> device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
@@ -55,15 +68,17 @@ private:
     ID3D11RasterizerState* rastState;
     ID3D11DepthStencilState* depthStencilState;
 
-    Camera* currentCamera;
-    FPSCamera fpsCamera;
-    OrbitCamera orbitCamera;
-    bool useOrbitCamera = true;
+    std::unique_ptr<OrbitCamera> orbitCamera;
+    std::unique_ptr<FPSCamera> fpsCamera;
+    Camera* activeCamera = nullptr;
 
-    std::vector<RenderObject> objects;
     UINT width = 0;
     UINT height = 0;
-};
 
+    DirectX::XMMATRIX projectionMatrix;
+    ProjectionMode currentProjection = ProjectionMode::Normal;
+
+    Scene scene;
+};
 
 #endif //GRAPHICS_H

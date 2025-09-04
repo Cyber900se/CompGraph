@@ -2,9 +2,11 @@
 #define WINDOW_H
 
 #pragma once
-#include <windows.h>
-#include <iostream>
+
 #include "InputHandler.h"
+
+#include <windows.h>
+
 
 class Window {
 public:

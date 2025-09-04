@@ -1,5 +1,4 @@
 #include "FPSCamera.h"
-#include <algorithm>
 
 FPSCamera::FPSCamera() {
     position = {0.0f, 0.0f, -5.0f};

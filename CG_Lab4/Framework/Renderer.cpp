@@ -1,15 +1,15 @@
 ﻿#include "Renderer.h"
 
-Renderer::Renderer() : hWnd(nullptr) {}
+Renderer::Renderer() : hWnd(nullptr), initialized(false) {}
 Renderer::~Renderer() {}
 
 bool Renderer::Initialize(HWND hWnd, UINT width, UINT height) {
     this->hWnd = hWnd;
-    graphics.Initialize(hWnd, width, height);
+    initialized = graphics.Initialize(hWnd, width, height);
     return initialized;
 }
 
-void Renderer::Update(float deltaTime, const wchar_t* applicationName) {
+void Renderer::Update(float deltaTime, const wchar_t* applicationName, InputHandler& input) {
     totalTime += deltaTime;
     timeAccumulator += deltaTime;
     frameCount++;
@@ -25,7 +25,7 @@ void Renderer::Update(float deltaTime, const wchar_t* applicationName) {
 
         frameCount = 0;
     }
-    graphics.Update(deltaTime);
+    graphics.Update(deltaTime, input);
 }
 
 void Renderer::Render(float width, float height) {

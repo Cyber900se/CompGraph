@@ -1,5 +1,5 @@
 ﻿#include "Application.h"
-#include "InputHandler.h"
+
 
 Application::Application() {}
 
@@ -37,19 +37,19 @@ int Application::Run() {
 
         InputHandler& input = window->GetInputHandler();
 
-        input.ResetFrameState();
-
         HandleInput(input, deltaTime);
 
-        Update(deltaTime);
+        Update(deltaTime, input);
         Render();
+
+        input.ResetFrameState();
     }
     return 0;
 }
 
-void Application::Update(float deltaTime) {
+void Application::Update(float deltaTime, InputHandler& input) {
     renderer.HandleInput(window->GetInputHandler(), deltaTime);
-    renderer.Update(deltaTime, applicationName);
+    renderer.Update(deltaTime, applicationName, input);
 }
 
 void Application::HandleResize(UINT newWidth, UINT newHeight) {

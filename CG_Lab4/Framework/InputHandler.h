@@ -1,31 +1,31 @@
 #pragma once
-#include <array>
-#include <DirectXMath.h>
-
 #include "Keys.h"
+#include <DirectXMath.h>
+#include <unordered_map>
 
 class InputHandler {
 public:
     InputHandler();
 
-    // Управление состоянием клавиш
+    // Клавиши
     void SetKeyDown(Keys key);
     void SetKeyUp(Keys key);
     bool IsKeyDown(Keys key) const;
+    bool WasKeyPressedThisFrame(Keys key) const;
 
-    // Управление состоянием мыши
+    // Мышь
     void SetMouseButtonDown(Keys button);
     void SetMouseButtonUp(Keys button);
+    bool IsMouseButtonDown(Keys button) const;
+
     void SetMousePosition(int x, int y);
     void AddMouseWheelDelta(int delta);
-
-    // Получение состояния
-    bool IsMouseButtonDown(Keys button) const;
     float GetMouseWheelDelta() const;
     DirectX::XMFLOAT2 GetMouseDelta() const;
+
     void ResetFrameState();
 
-    // Управление камерой
+    // Методы для камеры
     bool IsMovingForward() const;
     bool IsMovingBackward() const;
     bool IsMovingLeft() const;
@@ -35,12 +35,9 @@ public:
     bool IsCameraRotating() const;
 
 private:
-    static constexpr size_t KEYS_COUNT = 600;
-    std::array<bool, KEYS_COUNT> keyStates;
-
-    int mouseX = 0;
-    int mouseY = 0;
-    int prevMouseX = 0;
-    int prevMouseY = 0;
-    float mouseWheelDelta = 0.0f;
+    std::unordered_map<Keys, bool> keyStates;      // текущее состояние клавиш
+    std::unordered_map<Keys, bool> prevKeyStates;  // состояние клавиш на предыдущем кадре
+    int mouseX, mouseY;
+    int prevMouseX, prevMouseY;
+    float mouseWheelDelta;
 };

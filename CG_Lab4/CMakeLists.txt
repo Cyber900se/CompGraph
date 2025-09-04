@@ -21,7 +21,9 @@ add_executable(CG_Lab4 WIN32 WinMain.cpp
         Framework/Cameras/FPSCamera.h
         Framework/Cameras/OrbitCamera.cpp
         Framework/Cameras/OrbitCamera.h
-        Framework/Cameras/Camera.h)
+        Framework/Cameras/Camera.h
+        Framework/Geometry/Scene.cpp
+        Framework/Geometry/Scene.h)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

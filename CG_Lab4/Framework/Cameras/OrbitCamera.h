@@ -1,37 +1,44 @@
-//
-// Created by kron2 on 19.06.2025.
-//
-
 #ifndef ORBITCAMERA_H
 #define ORBITCAMERA_H
 
-#include "DirectXMath.h"
+#pragma once
+
 #include "Camera.h"
 
+#include <DirectXMath.h>
+#include <algorithm>
+
 class OrbitCamera : public Camera {
-    public:
-        OrbitCamera();
-        [[nodiscard]] DirectX::XMMATRIX GetViewMatrix() const override;
-        void SetPosition(float x, float y, float z) override;
-        void SetRotation(float pitch, float yaw) override;
+public:
+    OrbitCamera();
 
-        void Rotate(float dx, float dy) override;
-        void Zoom(float amount) override;
+    // Переопределения виртуальных методов Camera
+    DirectX::XMMATRIX GetViewMatrix() const override;
 
-        void MoveForward(float amount) override {}
-        void MoveBackward(float amount) override {}
-        void MoveRight(float amount) override {}
-        void MoveLeft(float amount) override {}
-        void MoveUp(float amount) override {}
-        void MoveDown(float amount) override {}
+    void SetPosition(float x, float y, float z) override;
+    void SetRotation(float pitch, float yaw) override;
 
-    private:
-        DirectX::XMFLOAT3 target{};
-        float distance;
-        float pitch;
-        float yaw;
-        DirectX::XMFLOAT3 position{};
-        void UpdatePosition();
+    void MoveForward(float amount) override;
+    void MoveBackward(float amount) override;
+    void MoveRight(float amount) override;
+    void MoveLeft(float amount) override;
+    void MoveUp(float amount) override;
+    void MoveDown(float amount) override;
+
+    void Rotate(float dx, float dy) override;
+    void Zoom(float amount) override;
+
+    // Дополнительно для OrbitCamera
+    void SetTarget(float x, float y, float z);
+    void SetRadius(float r);
+    void UpdatePosition();
+
+private:
+    DirectX::XMFLOAT3 position{}; // где находится камера
+    DirectX::XMFLOAT3 target{};   // на что смотрим
+    float distance;             // расстояние до цели
+    float pitch;                // угол вверх/вниз
+    float yaw;                  // угол влево/вправо
 };
 
-#endif //ORBITCAMERA_H
+#endif
