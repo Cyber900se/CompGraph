@@ -18,14 +18,14 @@ static Keys MapVkToKeys(WPARAM wparam, LPARAM lparam)
         case VK_MENU: // Alt
             return (lparam & (1u << 24)) ? Keys::RightAlt : Keys::LeftAlt;
         default:
-            return static_cast<Keys>(wparam); // буквенные, цифры, F1..F24 и т.п.
+            return static_cast<Keys>(wparam);
     }
 }
 
 LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam) {
     Window* pThis = nullptr;
     if (umessage == WM_NCCREATE) {
-        CREATESTRUCT* create = reinterpret_cast<CREATESTRUCT*>(lparam);
+        auto* create = reinterpret_cast<CREATESTRUCT*>(lparam);
         pThis = static_cast<Window*>(create->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
     } else {
@@ -113,6 +113,7 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
             case WM_DESTROY:
                 PostQuitMessage(0);
                 return 0;
+            default: ;
         }
     }
 

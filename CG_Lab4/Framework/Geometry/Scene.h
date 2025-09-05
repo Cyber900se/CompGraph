@@ -29,6 +29,9 @@ struct RenderObject {
 
     // заменяем указатель на индекс родителя (-1 = нет родителя)
     int parentIndex = -1;
+
+    D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    bool isOrbit = false;
 };
 class Scene {
 public:
@@ -43,7 +46,11 @@ public:
                               const DirectX::XMFLOAT4& color, float orbitRadius, float rotationSpeed,
                               float orbitSpeed, int parentIndex, float yOffset);
 
+    RenderObject CreateOrbit(ID3D11Device* device, int childIndex, const DirectX::XMFLOAT4& color);
+
+
     const std::vector<RenderObject>& GetObjects() const { return objects; }
+
 private:
     std::vector<RenderObject> objects;
 };

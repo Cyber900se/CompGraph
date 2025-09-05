@@ -263,6 +263,10 @@ void Graphics::Render(float totalTime, float width, float height) {
         UINT offset = 0;
         context->IASetVertexBuffers(0, 1, &obj.vertexBuffer, &stride, &offset);
         context->IASetIndexBuffer(obj.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+        context->IASetPrimitiveTopology(
+    obj.isOrbit ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+);
+
         context->DrawIndexed(obj.indexCount, 0, 0);
     }
 
