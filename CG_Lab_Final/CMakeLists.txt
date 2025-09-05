@@ -3,6 +3,8 @@ project(CG_Lab_Final)
 
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(directxtk CONFIG REQUIRED)
+
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 
@@ -33,4 +35,7 @@ set(LIBS
         d3dcompiler
         dxguid)
 
-target_link_libraries(CG_Lab_Final ${LIBS})
+target_link_libraries(CG_Lab_Final PUBLIC ${LIBS} PRIVATE
+        Microsoft::DirectXTK
+        d3d11 dxgi dxguid
+)
