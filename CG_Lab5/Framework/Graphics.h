@@ -15,9 +15,26 @@
 
 #include "InputHandler.h"
 #include "Cameras/Camera.h"
-#include "Cameras/FPSCamera.h"
-#include "Cameras/OrbitCamera.h"
+//#include "Cameras/FPSCamera.h"
+//#include "Cameras/OrbitCamera.h"
+#include "Cameras/ThirdPersonCamera.h"
 #include "Geometry/Scene.h"
+
+struct Light {
+    DirectX::XMFLOAT3 position;
+    float intensity;
+    DirectX::XMFLOAT3 color;
+    float padding; // выравнивание
+};
+
+struct PSConstants {
+    DirectX::XMFLOAT3 ambientColor;
+    float padding;
+    Light lights[100];
+    int numLights;
+    DirectX::XMFLOAT3 padding2;
+    DirectX::XMFLOAT3 cameraPos;
+};
 
 class Graphics {
 public:
@@ -44,8 +61,6 @@ private:
         Ortho
     };
 
-    struct RenderObject;
-
     bool InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height);
     bool InitShaders(HWND hWnd);
     bool InitCamera();
@@ -67,9 +82,9 @@ private:
     ID3D11Buffer* constantBuffer;
     ID3D11RasterizerState* rastState;
     ID3D11DepthStencilState* depthStencilState;
+    ID3D11Buffer* psConstantBuffer;
 
-    std::unique_ptr<OrbitCamera> orbitCamera;
-    std::unique_ptr<FPSCamera> fpsCamera;
+    std::unique_ptr<ThirdPersonCamera> thirdPersonCamera;
     Camera* activeCamera = nullptr;
 
     UINT width = 0;

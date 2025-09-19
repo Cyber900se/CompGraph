@@ -1,14 +1,12 @@
 cmake_minimum_required(VERSION 3.31)
-project(CG_Lab_Final)
+project(CG_Lab5)
 
 set(CMAKE_CXX_STANDARD 20)
-
-find_package(directxtk CONFIG REQUIRED)
 
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 
-add_executable(CG_Lab_Final WIN32 WinMain.cpp
+add_executable(CG_Lab5 WIN32 WinMain.cpp
         Framework/Application.cpp
         Framework/Application.h
         Framework/Window.cpp
@@ -21,11 +19,10 @@ add_executable(CG_Lab_Final WIN32 WinMain.cpp
         Framework/InputHandler.h
         Framework/Cameras/FPSCamera.cpp
         Framework/Cameras/FPSCamera.h
-        Framework/Cameras/OrbitCamera.cpp
-        Framework/Cameras/OrbitCamera.h
         Framework/Cameras/Camera.h
         Framework/Geometry/Scene.cpp
-        Framework/Geometry/Scene.h)
+        Framework/Geometry/Scene.h
+        Framework/Cameras/ThirdPersonCamera.cpp)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -35,7 +32,11 @@ set(LIBS
         d3dcompiler
         dxguid)
 
-target_link_libraries(CG_Lab_Final PUBLIC ${LIBS} PRIVATE
-        Microsoft::DirectXTK
-        d3d11 dxgi dxguid
+find_package(assimp CONFIG REQUIRED)
+find_package(directxtk CONFIG REQUIRED)
+
+target_link_libraries(CG_Lab5
+        PRIVATE ${LIBS}
+        PRIVATE Microsoft::DirectXTK
+        PRIVATE assimp::assimp
 )

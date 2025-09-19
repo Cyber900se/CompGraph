@@ -15,7 +15,7 @@ public:
     void SetSize(UINT width, UINT height);
     bool CheckSizeChanged();
     HWND GetHWND() const { return hwnd; }
-    bool ProcessMessages();
+    static bool ProcessMessages();
 
     UINT GetWidth() const { return width; }
     UINT GetHeight() const { return height; }
@@ -23,8 +23,8 @@ public:
     const InputHandler& GetInputHandler() const { return inputHandler; }
 
 private:
-    UINT width;
-    UINT height;
+    UINT width{};
+    UINT height{};
     HWND hwnd;
     HINSTANCE hInstance;
     bool sizeChanged = false;

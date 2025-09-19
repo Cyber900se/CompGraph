@@ -18,6 +18,8 @@ class Camera {
         virtual void MoveDown(float amount) = 0;
         virtual void Rotate(float dx, float dy) = 0;
         virtual void Zoom(float amount) = 0;
+
+        virtual DirectX::XMVECTOR GetPositionVector() = 0;
 };
 
 #endif //CAMERA_H
