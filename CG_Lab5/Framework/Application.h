@@ -26,7 +26,7 @@ private:
 
     bool InitWindow(HINSTANCE hInstance);
     void Update(float deltaTime, InputHandler& input);
-    void Render();
+    void Render(std::vector<DirectX::XMFLOAT3> lightPositions);
     void HandleResize(UINT width, UINT height);
     void HandleInput(const InputHandler& input, float deltaTime);
 

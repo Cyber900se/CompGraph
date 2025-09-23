@@ -1,7 +1,3 @@
-//
-// Created by kron2 on 19.09.2025.
-//
-
 #ifndef CG_LAB4_RENDEROBJECT_H
 #define CG_LAB4_RENDEROBJECT_H
 

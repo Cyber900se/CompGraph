@@ -1,5 +1,26 @@
 ﻿#include "Application.h"
 
+#include <random>
+
+
+
+std::vector<DirectX::XMFLOAT3> InitLights()
+{
+    constexpr int MAX_LIGHTS = 100; // например, 10 источников
+
+    std::vector<DirectX::XMFLOAT3> lightPositions;
+
+    std::mt19937 rng(42); // фиксированный seed, чтобы "рандом" был стабильный
+    std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
+
+    lightPositions.resize(MAX_LIGHTS);
+    for (int i = 0; i < MAX_LIGHTS; i++)
+    {
+        lightPositions[i] = DirectX::XMFLOAT3(dist(rng), 2.0f, dist(rng));
+    }
+    return lightPositions;
+}
+
 Application::Application() {}
 
 Application::~Application() {}
@@ -25,6 +46,7 @@ bool Application::Initialize(HINSTANCE hInstance) {
 
 int Application::Run() {
     auto prevTime = std::chrono::steady_clock::now();
+    std::vector<DirectX::XMFLOAT3> lightPositions = InitLights();
     while (!window->ProcessMessages()) {
         auto curTime = std::chrono::steady_clock::now();
         float deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(curTime - prevTime).count() / 1000000.0f;
@@ -39,7 +61,7 @@ int Application::Run() {
         HandleInput(input, deltaTime);
 
         Update(deltaTime, input);
-        Render();
+        Render(lightPositions);
 
         input.ResetFrameState();
     }
@@ -71,6 +93,6 @@ void Application::HandleInput(const InputHandler& input, float deltaTime) {
     renderer.HandleInput(input, deltaTime);
 }
 
-void Application::Render() {
-    renderer.Render(width, height);
+void Application::Render(std::vector<DirectX::XMFLOAT3> lightPositions) {
+    renderer.Render(width, height, lightPositions);
 }

@@ -28,8 +28,8 @@ void Renderer::Update(float deltaTime, const wchar_t* applicationName, InputHand
     graphics.Update(deltaTime, input);
 }
 
-void Renderer::Render(float width, float height) {
-    graphics.Render(totalTime, width, height);
+void Renderer::Render(float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions) {
+    graphics.Render(totalTime, width, height, lightPositions);
 }
 
 void Renderer::Resize(UINT width, UINT height) {

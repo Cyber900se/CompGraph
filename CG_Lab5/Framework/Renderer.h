@@ -17,7 +17,7 @@ public:
     bool Initialize(HWND hWnd, UINT width, UINT height);
     bool IsInitialized() const { return initialized; }
     void Update(float deltaTime, const wchar_t* applicationName, InputHandler& input);
-    void Render(float width, float height);
+    void Render(float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions);
     void Resize(UINT width, UINT height);
 
 private:

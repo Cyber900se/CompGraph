@@ -15,25 +15,27 @@
 
 #include "InputHandler.h"
 #include "Cameras/Camera.h"
-//#include "Cameras/FPSCamera.h"
-//#include "Cameras/OrbitCamera.h"
 #include "Cameras/ThirdPersonCamera.h"
 #include "Geometry/Scene.h"
 
 struct Light {
-    DirectX::XMFLOAT3 position;
-    float intensity;
-    DirectX::XMFLOAT3 color;
-    float padding; // выравнивание
-};
+    DirectX::XMFLOAT3 position; // 12 байт
+    float intensity;            // +4 = 16 байт
+    DirectX::XMFLOAT3 color;    // 12 байт
+    float padding;              // +4 = 16 байт
+}; // = 32 байта, совпадает с HLSL
+
 
 struct PSConstants {
-    DirectX::XMFLOAT3 ambientColor;
-    float padding;
-    Light lights[100];
-    int numLights;
-    DirectX::XMFLOAT3 padding2;
-    DirectX::XMFLOAT3 cameraPos;
+    DirectX::XMFLOAT3 ambientColor; // 12
+    int numLights;                  // +4 = 16
+
+    Light lights[100];              // 3200
+
+    DirectX::XMFLOAT3 cameraPos;    // 12
+    float padding;                  // +4 = 16
+
+    DirectX::XMFLOAT4 padding2;     // ещё 16 байт, чтобы довести размер до кратного 16
 };
 
 class Graphics {
@@ -42,7 +44,7 @@ public:
     ~Graphics();
 
     bool Initialize(HWND hWnd, UINT width, UINT height);
-    void Render(float totalTime, float width, float height);
+    void Render(float totalTime, float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions);
     void Update(float deltaTime, InputHandler& input);
     void Resize(UINT width, UINT height);
     void HandleInput(const InputHandler &input, float deltaTime);
@@ -52,6 +54,7 @@ private:
         DirectX::XMMATRIX world;
         DirectX::XMMATRIX view;
         DirectX::XMMATRIX projection;
+        DirectX::XMMATRIX worldInvTranspose;
     };
 
     enum class ProjectionMode {

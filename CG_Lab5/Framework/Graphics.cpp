@@ -173,10 +173,9 @@ bool Graphics::InitCamera() {
 }
 
 void Graphics::HandleInput(const InputHandler& input, float deltaTime) {
-    const float rotationSpeed = 0.01f;
-
     // вращение камеры мышью
     if (activeCamera == thirdPersonCamera.get()) {
+        const float rotationSpeed = 0.01f;
         auto d = input.GetMouseDelta();
         thirdPersonCamera->Update(scene.player.sphere.position, d.x * rotationSpeed, d.y * rotationSpeed);
     }
@@ -212,22 +211,26 @@ void Graphics::Update(float deltaTime, InputHandler& input)
 }
 
 
-void Graphics::Render(float totalTime, float width, float height) {
+void Graphics::Render(float totalTime, float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions) {
     DirectX::XMVECTOR camPosVec = activeCamera->GetPositionVector(); // метод, который возвращает XMVECTOR позиции камеры
-    DirectX::XMFLOAT3 camPos;
+    DirectX::XMFLOAT3 camPos{};
     DirectX::XMStoreFloat3(&camPos, camPosVec);
 
-    PSConstants psConst{};
-    psConst.ambientColor = {0.2f,0.2f,0.2f};
-    psConst.numLights = 100;
-    psConst.cameraPos = camPos; // передаём позицию камеры в шейдер
+    PSConstants psConst = {};
+    psConst.numLights = 1;
+    psConst.ambientColor = DirectX::XMFLOAT3(0.1f, 0.1f, 0.1f);
+    psConst.lights[0].position = DirectX::XMFLOAT3(0, 5, -5);
+    psConst.lights[0].intensity = 0.1f;
+    psConst.lights[0].color = DirectX::XMFLOAT3(1, 1, 1);
 
-    // создаём яркие источники света
-    for(int i=0;i<100;i++){
-        psConst.lights[i].position = { (rand()%2000/100.0f)-10.0f, 1.0f, (rand()%2000/100.0f)-10.0f };
+    context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
+
+    for(int i = 0;i < psConst.numLights; i++){
+        psConst.lights[i].position = lightPositions[i];
         psConst.lights[i].color = {1.0f,1.0f,1.0f};
         psConst.lights[i].intensity = 1.0f;
     }
+
 
     context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
     context->PSSetConstantBuffers(1, 1, &psConstantBuffer);
@@ -258,10 +261,11 @@ void Graphics::Render(float totalTime, float width, float height) {
     DirectX::XMMATRIX proj = projectionMatrix;
 
     auto drawObject = [&](const RenderObject &obj, const DirectX::XMMATRIX &world) {
-        VSConstants vsConst{
+        VSConstants vsConst {
             DirectX::XMMatrixTranspose(world),
             DirectX::XMMatrixTranspose(view),
-            DirectX::XMMatrixTranspose(proj)
+            DirectX::XMMatrixTranspose(proj),
+            DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, world)) // inverse-transpose
         };
         context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
 

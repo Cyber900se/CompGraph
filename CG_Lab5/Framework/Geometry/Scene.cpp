@@ -86,100 +86,140 @@ RenderObject Scene::CreateCube(ID3D11Device* device, float size, const DirectX::
 }
 
 
-RenderObject Scene::CreateSphere(ID3D11Device* device, float radius, int sliceCount, int stackCount,
-                                 const DirectX::XMFLOAT4& color, float orbitRadius, float rotationSpeed,
-                                 int parentIndex, float yOffset)
+RenderObject Scene::CreateSphere(
+    ID3D11Device* device,
+    float radius,
+    int sliceCount,      // sectorCount (longitudes)
+    int stackCount,      // stacks (latitudes) - must be >= 2
+    const DirectX::XMFLOAT4& color,
+    float orbitRadius,
+    float rotationSpeed,
+    int parentIndex,
+    float yOffset)
 {
+    // safety
+    if (sliceCount < 3) sliceCount = 3;
+    if (stackCount < 2) stackCount = 2;
+
     std::vector<Vertex> vertices;
     std::vector<UINT> indices;
 
-    // Верхний полюс
-    vertices.push_back({ {0, radius, 0, 1}, color, {0, 1, 0} });
+    const int sectorCount = sliceCount;
+    const int stacks = stackCount;
 
-    // Средние кольца
-    for (int i = 1; i < stackCount; i++) {
-        float phi = DirectX::XM_PI * i / stackCount;
-        for (int j = 0; j < sliceCount; j++) {
-            float theta = 2 * DirectX::XM_PI * j / sliceCount;
-            float x = radius * sinf(phi) * cosf(theta);
-            float y = radius * cosf(phi);
-            float z = radius * sinf(phi) * sinf(theta);
+    // Top pole
+    vertices.push_back({ {0.0f,  radius, 0.0f, 1.0f}, color, {0.0f, 1.0f, 0.0f} });
 
-            // Нормаль = вектор от центра к вершине
-            DirectX::XMFLOAT3 normal = { x / radius, y / radius, z / radius };
+    // Rings (exclude poles)
+    for (int i = 1; i <= stacks - 1; ++i) // i from 1 .. stacks-1 inclusive
+    {
+        float phi = DirectX::XM_PI * i / stacks; // 0..PI
+        float y   = radius * cosf(phi);          // y coordinate
+        float r   = radius * sinf(phi);          // radius of current ring
 
-            vertices.push_back({ {x, y, z, 1}, color, normal });
+        for (int j = 0; j < sectorCount; ++j)
+        {
+            float theta = 2.0f * DirectX::XM_PI * j / sectorCount;
+            float x = r * cosf(theta);
+            float z = r * sinf(theta);
+
+            DirectX::XMFLOAT3 normal = { x / radius, y / radius, z / radius }; // outward normal
+            vertices.push_back({ {x, y, z, 1.0f}, color, normal });
         }
     }
 
-    // Нижний полюс
-    vertices.push_back({ {0, -radius, 0, 1}, color, {0, -1, 0} });
+    // Bottom pole
+    vertices.push_back({ {0.0f, -radius, 0.0f, 1.0f}, color, {0.0f, -1.0f, 0.0f} });
 
-    // Индексы
-    int north = 0;
-    int south = (int)vertices.size() - 1;
-    int ringCount = stackCount - 2;
-    int ringVerts = sliceCount;
+    // Indices
+    const int topIndex = 0;
+    const int baseIndex = 1; // first vertex of first ring
+    const int ringCount = stacks - 1; // number of rings (excluding poles)
+    const int southIndex = static_cast<int>(vertices.size()) - 1;
 
-    // Верхний полюс
-    for (int i = 0; i < sliceCount; i++) {
-        indices.push_back(north);
-        indices.push_back(1 + i);
-        indices.push_back(1 + (i + 1) % sliceCount);
+    // --- Top cap ---
+    for (int j = 0; j < sectorCount; ++j)
+    {
+        // triangle: top, next, current  (winding chosen to face outward)
+        indices.push_back(topIndex);
+        indices.push_back(baseIndex + (j + 1) % sectorCount);
+        indices.push_back(baseIndex + j);
     }
 
-    // Средние кольца
-    int baseIndex = 1;
-    for (int i = 0; i < ringCount - 1; i++) {
-        for (int j = 0; j < sliceCount; j++) {
-            int first  = baseIndex + i * ringVerts + j;
-            int second = baseIndex + (i + 1) * ringVerts + j;
+    // --- Middle (quads split into two triangles) ---
+    // iterate over pairs of adjacent rings
+    for (int i = 0; i < ringCount - 1; ++i)
+    {
+        int curBase = baseIndex + i * sectorCount;
+        int nextBase = baseIndex + (i + 1) * sectorCount;
 
-            indices.push_back(first);
-            indices.push_back(second);
-            indices.push_back(baseIndex + i * ringVerts + (j + 1) % sliceCount);
+        for (int j = 0; j < sectorCount; ++j)
+        {
+            int cur = curBase + j;
+            int next = nextBase + j;
+            int curNext = curBase + (j + 1) % sectorCount;
+            int nextNext = nextBase + (j + 1) % sectorCount;
 
-            indices.push_back(second);
-            indices.push_back(baseIndex + (i + 1) * ringVerts + (j + 1) % sliceCount);
-            indices.push_back(baseIndex + i * ringVerts + (j + 1) % sliceCount);
+            // triangle 1
+            indices.push_back(cur);
+            indices.push_back(curNext);
+            indices.push_back(next);
+
+            // triangle 2
+            indices.push_back(curNext);
+            indices.push_back(nextNext);
+            indices.push_back(next);
         }
     }
 
-    // Нижний полюс
-    baseIndex = south - ringVerts;
-    for (int i = 0; i < sliceCount; i++) {
-        indices.push_back(south);
-        indices.push_back(baseIndex + (i + 1) % sliceCount);
-        indices.push_back(baseIndex + i);
+    // --- Bottom cap ---
+    int lastRingBase = baseIndex + (ringCount - 1) * sectorCount;
+    for (int j = 0; j < sectorCount; ++j)
+    {
+        // triangle: bottom, current, next  (winding chosen to face outward)
+        indices.push_back(southIndex);
+        indices.push_back(lastRingBase + j);
+        indices.push_back(lastRingBase + (j + 1) % sectorCount);
     }
 
-    // Создание буферов
+    // --- Create GPU buffers ---
     D3D11_BUFFER_DESC vbd{};
     vbd.Usage = D3D11_USAGE_DEFAULT;
-    vbd.ByteWidth = sizeof(Vertex) * (UINT)vertices.size();
+    vbd.ByteWidth = static_cast<UINT>(sizeof(Vertex) * vertices.size());
     vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA vinit{ vertices.data() };
+    D3D11_SUBRESOURCE_DATA vinit{};
+    vinit.pSysMem = vertices.data();
     ID3D11Buffer* vbuf = nullptr;
-    device->CreateBuffer(&vbd, &vinit, &vbuf);
+    HRESULT hr = device->CreateBuffer(&vbd, &vinit, &vbuf);
+    if (FAILED(hr)) {
+        // handle error (return empty RenderObject)
+        RenderObject empty{};
+        return empty;
+    }
 
     D3D11_BUFFER_DESC ibd{};
     ibd.Usage = D3D11_USAGE_DEFAULT;
-    ibd.ByteWidth = sizeof(UINT) * (UINT)indices.size();
+    ibd.ByteWidth = static_cast<UINT>(sizeof(UINT) * indices.size());
     ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA iinit{ indices.data() };
+    D3D11_SUBRESOURCE_DATA iinit{};
+    iinit.pSysMem = indices.data();
     ID3D11Buffer* ibuf = nullptr;
-    device->CreateBuffer(&ibd, &iinit, &ibuf);
+    hr = device->CreateBuffer(&ibd, &iinit, &ibuf);
+    if (FAILED(hr)) {
+        if (vbuf) vbuf->Release();
+        RenderObject empty{};
+        return empty;
+    }
 
     RenderObject obj{};
     obj.vertexBuffer = vbuf;
     obj.indexBuffer = ibuf;
-    obj.indexCount = (UINT)indices.size();
+    obj.indexCount = static_cast<UINT>(indices.size());
     obj.position = { orbitRadius + yOffset, yOffset, 0.0f };
     obj.radius = radius;
 
     return obj;
 }
-
 
 RenderObject Scene::CreatePlane(ID3D11Device* device, float size, const DirectX::XMFLOAT4& color)
 {
@@ -218,8 +258,8 @@ void Scene::Initialize(ID3D11Device* device)
         const float size=0.1f+static_cast<float>(rand())/RAND_MAX*0.2f;
         DirectX::XMFLOAT4 color={
             static_cast<float>(rand())/RAND_MAX,
-            (float)rand()/RAND_MAX,
-            (float)rand()/RAND_MAX,
+            static_cast<float>(rand())/RAND_MAX,
+            static_cast<float>(rand())/RAND_MAX,
             1
         };
         float x=-10+static_cast<float>(rand())/RAND_MAX*20.0f;
@@ -235,7 +275,8 @@ void Scene::Initialize(ID3D11Device* device)
     }
 
     // Игрок (куб)
-    player.sphere = CreateCube(device, 0.6f, {1, 0, 0, 1});
+    //player.sphere = CreateCube(device, 0.6f, {1, 0, 0, 1});
+    player.sphere = CreateSphere(device, 0.6f, 12, 12, {1, 0, 0, 1});
     player.sphere.position = {0.0f, 0.3f, 0.0f};
     DirectX::XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixIdentity());
 }

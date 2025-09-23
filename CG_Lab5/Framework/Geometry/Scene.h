@@ -10,6 +10,7 @@
 struct AttachedObject {
     int index;                      // индекс объекта в массиве сцены
     DirectX::XMFLOAT3 localOffset;  // смещение от центра игрока
+    DirectX::XMFLOAT4 localRotation{0,0,0,1};
 };
 
 struct Player {
@@ -18,6 +19,7 @@ struct Player {
     bool canJump = true;
     int jumpCount = 0;
 
+    DirectX::XMFLOAT4 rotationQuat{0, 0, 0, 1}; // единичный кватернион
     std::vector<AttachedObject> attachedObjects; // объекты, которые прилипли
 };
 

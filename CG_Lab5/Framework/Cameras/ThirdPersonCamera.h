@@ -25,7 +25,7 @@ public:
     void Rotate(float dx, float dy) override;
     void Update(const DirectX::XMFLOAT3& targetPos, float yawDelta, float pitchDelta);
 
-    DirectX::XMVECTOR GetPositionVector() { return DirectX::XMLoadFloat3(&camPos); }
+    DirectX::XMVECTOR GetPositionVector() override { return DirectX::XMLoadFloat3(&camPos); }
 
     // Пустые методы для соответствия абстрактному классу Camera
     void SetPosition(float, float, float) override;
