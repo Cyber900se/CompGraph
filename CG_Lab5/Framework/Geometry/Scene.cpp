@@ -276,7 +276,7 @@ void Scene::Initialize(ID3D11Device* device)
 
     // Игрок (куб)
     //player.sphere = CreateCube(device, 0.6f, {1, 0, 0, 1});
-    player.sphere = CreateSphere(device, 0.6f, 12, 12, {1, 0, 0, 1});
+    player.sphere = CreateSphere(device, 0.3f, 12, 12, {1, 0, 0, 1});
     player.sphere.position = {0.0f, 0.3f, 0.0f};
     DirectX::XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixIdentity());
 }

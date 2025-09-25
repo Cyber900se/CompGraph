@@ -217,7 +217,7 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     DirectX::XMStoreFloat3(&camPos, camPosVec);
 
     PSConstants psConst = {};
-    psConst.numLights = 1;
+    psConst.numLights = 100;
     psConst.ambientColor = DirectX::XMFLOAT3(0.1f, 0.1f, 0.1f);
     psConst.lights[0].position = DirectX::XMFLOAT3(0, 5, -5);
     psConst.lights[0].intensity = 0.1f;
@@ -228,9 +228,8 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     for(int i = 0;i < psConst.numLights; i++){
         psConst.lights[i].position = lightPositions[i];
         psConst.lights[i].color = {1.0f,1.0f,1.0f};
-        psConst.lights[i].intensity = 1.0f;
+        psConst.lights[i].intensity = 0.01f;
     }
-
 
     context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
     context->PSSetConstantBuffers(1, 1, &psConstantBuffer);
