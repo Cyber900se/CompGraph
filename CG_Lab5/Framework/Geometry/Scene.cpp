@@ -299,8 +299,8 @@ void Scene::Update(float deltaTime, const InputHandler& input,
 
     // --- Движение игрока относительно камеры ---
     DirectX::XMVECTOR moveVector = DirectX::XMVectorZero();
-    moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camForward, DirectX::XMVectorGetZ(dirVec))); // W/S
-    moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camRight,   DirectX::XMVectorGetX(dirVec))); // A/D
+    moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camForward, DirectX::XMVectorGetZ(dirVec)));
+    moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camRight,   DirectX::XMVectorGetX(dirVec)));
 
     // Ограничиваем движение по горизонтали
     moveVector = DirectX::XMVectorSetY(moveVector, 0);
@@ -332,14 +332,14 @@ void Scene::Update(float deltaTime, const InputHandler& input,
     player.sphere.position.y += player.velocity.y * deltaTime;
     player.sphere.position.z += player.velocity.z * deltaTime;
 
-    if(player.sphere.position.y < 0.3f){ // половина размера куба
+    if(player.sphere.position.y < 0.3f){
         player.sphere.position.y = 0.3f;
         player.velocity.y = 0;
         player.canJump = true;
         player.jumpCount = 0;
     }
 
-    // --- Вращение куба ---
+    // --- Вращение шара (ИСПРАВЛЕННАЯ ЧАСТЬ) ---
     DirectX::XMVECTOR horizontalMove = DirectX::XMVectorSet(player.velocity.x, 0, player.velocity.z, 0);
     float moveLen = DirectX::XMVector3Length(horizontalMove).m128_f32[0];
 
@@ -351,22 +351,25 @@ void Scene::Update(float deltaTime, const InputHandler& input,
         DirectX::XMVECTOR axis = DirectX::XMVector3Cross(up, horizontalMove);
         axis = DirectX::XMVector3Normalize(axis);
 
-        // угол вращения: длина пути / радиус куба
-        float cubeRadius = 0.3f; // половина грани
-        float rotationAngle = moveLen * deltaTime / cubeRadius;
+        // угол вращения: длина пути / радиус шара
+        float sphereRadius = 0.3f;
+        float rotationAngle = moveLen * deltaTime / sphereRadius;
 
+        // НАКОПЛЕНИЕ вращения вместо перезаписи
         DirectX::XMMATRIX currentRot = DirectX::XMLoadFloat4x4(&player.sphere.rotationMatrix);
-        DirectX::XMMATRIX rot = DirectX::XMMatrixRotationAxis(axis, rotationAngle);
-        currentRot = rot * currentRot;
+        DirectX::XMMATRIX newRot = DirectX::XMMatrixRotationAxis(axis, rotationAngle);
+
+        // Умножаем новое вращение на текущее (накапливаем)
+        currentRot = newRot * currentRot;
         XMStoreFloat4x4(&player.sphere.rotationMatrix, currentRot);
     }
 
     // --- Прилипание объектов ---
     for (int i = 0; i < dynamicObjects.size(); i++) {
         auto& obj = dynamicObjects[i];
-        if (obj.attached) continue; // уже прилип
+        if (obj.attached) continue;
 
-        float radiusPlayer = 0.3f; // половина размера куба
+        float radiusPlayer = 0.3f;
         float radiusObj = obj.radius;
 
         DirectX::XMVECTOR playerPos = XMLoadFloat3(&player.sphere.position);
@@ -394,5 +397,3 @@ void Scene::Update(float deltaTime, const InputHandler& input,
         XMStoreFloat3(&obj.position, worldPos);
     }
 }
-
-

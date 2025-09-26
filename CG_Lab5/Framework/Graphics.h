@@ -27,15 +27,19 @@ struct Light {
 
 
 struct PSConstants {
-    DirectX::XMFLOAT3 ambientColor; // 12
-    int numLights;                  // +4 = 16
+    DirectX::XMFLOAT3 ambientColor;
+    int numLights;
 
-    Light lights[100];              // 3200
+    struct Light {
+        DirectX::XMFLOAT3 position;
+        float intensity;           // выравнивание 16 байт
+        DirectX::XMFLOAT3 color;
+        float padding;
+    };
+    Light lights[100];
 
-    DirectX::XMFLOAT3 cameraPos;    // 12
-    float padding;                  // +4 = 16
-
-    DirectX::XMFLOAT4 padding2;     // ещё 16 байт, чтобы довести размер до кратного 16
+    DirectX::XMFLOAT3 cameraPos;
+    float padding2;
 };
 
 class Graphics {

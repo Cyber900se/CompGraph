@@ -2,8 +2,6 @@
 
 #include <random>
 
-
-
 std::vector<DirectX::XMFLOAT3> InitLights()
 {
     constexpr int MAX_LIGHTS = 100; // например, 10 источников

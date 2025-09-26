@@ -36,19 +36,18 @@ struct VS_OUTPUT
 
 VS_OUTPUT VSMain(float4 pos : POSITION, float4 color : COLOR, float3 normal : NORMAL)
 {
-	VS_OUTPUT output;
+    VS_OUTPUT output;
 
-	// --- позиция ---
-	float4 worldPos4 = mul(pos, world);
-	output.WorldPos = worldPos4.xyz;
-	output.Pos = mul(mul(worldPos4, view), proj);
+    float4 worldPos4 = mul(pos, world);
+    output.WorldPos = worldPos4.xyz;
+    output.Pos = mul(mul(worldPos4, view), proj);
 
-	// --- нормали ---
-	float3 normalW = mul(normal, (float3x3)worldInvTranspose);
-	output.Normal = normalize(normalW);
+    // Преобразование нормали в мировое пространство
+    float3 normalW = mul(normal, (float3x3)worldInvTranspose);
+    output.Normal = normalize(normalW); // Важно нормализовать!
 
-	output.Color = color;
-	return output;
+    output.Color = color;
+    return output;
 }
 
 float4 PSMain(VS_OUTPUT input) : SV_TARGET

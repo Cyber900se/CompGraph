@@ -212,32 +212,30 @@ void Graphics::Update(float deltaTime, InputHandler& input)
 
 
 void Graphics::Render(float totalTime, float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions) {
-    DirectX::XMVECTOR camPosVec = activeCamera->GetPositionVector(); // метод, который возвращает XMVECTOR позиции камеры
+    // Получаем позицию камеры
     DirectX::XMFLOAT3 camPos{};
-    DirectX::XMStoreFloat3(&camPos, camPosVec);
+    DirectX::XMStoreFloat3(&camPos, activeCamera->GetPositionVector());
 
+    // Заполняем константный буфер для пиксельного шейдера
     PSConstants psConst = {};
-    psConst.numLights = 100;
     psConst.ambientColor = DirectX::XMFLOAT3(0.1f, 0.1f, 0.1f);
-    psConst.lights[0].position = DirectX::XMFLOAT3(0, 5, -5);
-    psConst.lights[0].intensity = 0.1f;
-    psConst.lights[0].color = DirectX::XMFLOAT3(1, 1, 1);
+    psConst.numLights = static_cast<int>(lightPositions.size());
+    psConst.cameraPos = camPos;
 
-    context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
-
-    for(int i = 0;i < psConst.numLights; i++){
+    // Инициализация источников света
+    for (int i = 0; i < psConst.numLights; i++) {
         psConst.lights[i].position = lightPositions[i];
-        psConst.lights[i].color = {1.0f,1.0f,1.0f};
-        psConst.lights[i].intensity = 0.01f;
+        psConst.lights[i].color = { 1.0f, 1.0f, 1.0f };
+        psConst.lights[i].intensity = 0.01f; // достаточно ярко
     }
 
     context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
     context->PSSetConstantBuffers(1, 1, &psConstantBuffer);
 
-
-    float clearColor[] = {0.1f,0.1f,0.1f,1.0f};
+    // Очистка буфера
+    float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
     context->ClearRenderTargetView(renderTargetView, clearColor);
-    context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, 1.0f, 0);
+    context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
     context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
 
@@ -255,16 +253,17 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     context->PSSetShader(pixelShader, nullptr, 0);
     context->VSSetConstantBuffers(0, 1, &constantBuffer);
 
-    // --- Матрицы камеры ---
     DirectX::XMMATRIX view = activeCamera->GetViewMatrix();
     DirectX::XMMATRIX proj = projectionMatrix;
 
-    auto drawObject = [&](const RenderObject &obj, const DirectX::XMMATRIX &world) {
-        VSConstants vsConst {
-            DirectX::XMMatrixTranspose(world),
-            DirectX::XMMatrixTranspose(view),
-            DirectX::XMMatrixTranspose(proj),
-            DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, world)) // inverse-transpose
+    auto drawObject = [&](const RenderObject& obj, const DirectX::XMMATRIX& world) {
+        DirectX::XMMATRIX worldInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
+
+        VSConstants vsConst{
+            XMMatrixTranspose(world),
+            XMMatrixTranspose(view),
+            XMMatrixTranspose(proj),
+            XMMatrixTranspose(worldInvTranspose)
         };
         context->UpdateSubresource(constantBuffer, 0, nullptr, &vsConst, 0, 0);
 
@@ -275,31 +274,27 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
         context->DrawIndexed(obj.indexCount, 0, 0);
     };
 
-    // --- Отрисовка статических объектов ---
-    for (const RenderObject obj : scene.GetStaticObjects()) {
-        DirectX::XMMATRIX world =
-            DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+    for (const auto& obj : scene.GetStaticObjects()) {
+        DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
         drawObject(obj, world);
     }
 
-    // --- Отрисовка динамических объектов ---
-    for (auto &obj : scene.GetDynamicObjects()) {
-        DirectX::XMMATRIX world =
-            DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+    for (auto& obj : scene.GetDynamicObjects()) {
+        DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
         drawObject(obj, world);
     }
 
-    // --- Отрисовка игрока ---
     {
-        auto &p = scene.player.sphere;
-        DirectX::XMMATRIX rot = DirectX::XMLoadFloat4x4(&p.rotationMatrix);
+        auto& p = scene.player.sphere;
+        DirectX::XMMATRIX rot = XMLoadFloat4x4(&p.rotationMatrix);
         DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(p.position.x, p.position.y, p.position.z);
-        DirectX::XMMATRIX world = rot * trans; // сначала вращение, потом смещение
+        DirectX::XMMATRIX world = rot * trans;
         drawObject(p, world);
     }
 
     swapChain->Present(1, 0);
 }
+
 
 void Graphics::UpdateProjection(UINT w, UINT h) {
     float aspect = (h > 0) ? (static_cast<float>(w) / static_cast<float>(h)) : 1.0f;
