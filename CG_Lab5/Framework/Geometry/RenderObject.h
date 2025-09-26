@@ -24,11 +24,7 @@ struct RenderObject {
     bool attached = false;
     bool isOrbit = false;
     float radius = 0.15f;
-    DirectX::XMFLOAT4X4 rotationMatrix = DirectX::XMFLOAT4X4{
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1
-    };
+    DirectX::XMFLOAT4X4 rotationMatrix = {};   // для совместимости с рендером
+    DirectX::XMFLOAT4 rotationQuat = {0,0,0,1}; // добавляем кватернион для логики вращения
 };
 #endif //CG_LAB4_RENDEROBJECT_H

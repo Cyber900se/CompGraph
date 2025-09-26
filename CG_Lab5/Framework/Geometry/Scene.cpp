@@ -292,7 +292,6 @@ void Scene::Update(float deltaTime, const InputHandler& input,
     if(input.IsKeyDown(Keys::A)) moveDir.x -= 1;
     if(input.IsKeyDown(Keys::D)) moveDir.x += 1;
 
-    // Вектор ввода
     DirectX::XMVECTOR dirVec = DirectX::XMVectorSet(moveDir.x, 0, moveDir.z, 0);
     if(DirectX::XMVector3Length(dirVec).m128_f32[0] > 0)
         dirVec = DirectX::XMVector3Normalize(dirVec);
@@ -301,17 +300,14 @@ void Scene::Update(float deltaTime, const InputHandler& input,
     DirectX::XMVECTOR moveVector = DirectX::XMVectorZero();
     moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camForward, DirectX::XMVectorGetZ(dirVec)));
     moveVector = DirectX::XMVectorAdd(moveVector, DirectX::XMVectorScale(camRight,   DirectX::XMVectorGetX(dirVec)));
-
-    // Ограничиваем движение по горизонтали
     moveVector = DirectX::XMVectorSetY(moveVector, 0);
-    float len = DirectX::XMVector3Length(moveVector).m128_f32[0];
 
+    float len = DirectX::XMVector3Length(moveVector).m128_f32[0];
     DirectX::XMVECTOR moveDirNorm = (len > 0.001f) ? DirectX::XMVector3Normalize(moveVector) : DirectX::XMVectorZero();
 
     float speed = 5.0f;
     DirectX::XMFLOAT3 move{};
     XMStoreFloat3(&move, moveDirNorm);
-
     player.velocity.x = move.x * speed;
     player.velocity.z = move.z * speed;
 
@@ -332,68 +328,81 @@ void Scene::Update(float deltaTime, const InputHandler& input,
     player.sphere.position.y += player.velocity.y * deltaTime;
     player.sphere.position.z += player.velocity.z * deltaTime;
 
-    if(player.sphere.position.y < 0.3f){
-        player.sphere.position.y = 0.3f;
+    if(player.sphere.position.y < player.sphere.radius){
+        player.sphere.position.y = player.sphere.radius;
         player.velocity.y = 0;
         player.canJump = true;
         player.jumpCount = 0;
     }
 
-    // --- Вращение шара (ИСПРАВЛЕННАЯ ЧАСТЬ) ---
+    // --- Вращение шара по направлению движения ---
     DirectX::XMVECTOR horizontalMove = DirectX::XMVectorSet(player.velocity.x, 0, player.velocity.z, 0);
     float moveLen = DirectX::XMVector3Length(horizontalMove).m128_f32[0];
 
-    if(moveLen > 0.001f){
+    if(moveLen > 0.001f) {
         horizontalMove = DirectX::XMVector3Normalize(horizontalMove);
 
-        // ось вращения поперёк движения
-        DirectX::XMVECTOR up = DirectX::XMVectorSet(0,1,0,0);
-        DirectX::XMVECTOR axis = DirectX::XMVector3Cross(up, horizontalMove);
-        axis = DirectX::XMVector3Normalize(axis);
+        // локальная вертикаль игрока
+        DirectX::XMVECTOR localUp = DirectX::XMVectorSet(0,1,0,0);
 
-        // угол вращения: длина пути / радиус шара
-        float sphereRadius = 0.3f;
-        float rotationAngle = moveLen * deltaTime / sphereRadius;
+        // ось вращения для "катания"
+        DirectX::XMVECTOR rotAxis = DirectX::XMVector3Cross(horizontalMove, localUp);
+        rotAxis = DirectX::XMVector3Normalize(rotAxis);
 
-        // НАКОПЛЕНИЕ вращения вместо перезаписи
-        DirectX::XMMATRIX currentRot = DirectX::XMLoadFloat4x4(&player.sphere.rotationMatrix);
-        DirectX::XMMATRIX newRot = DirectX::XMMatrixRotationAxis(axis, rotationAngle);
+        // угол вращения = расстояние / радиус шара
+        float rotationAngle = moveLen * deltaTime / player.sphere.radius;
 
-        // Умножаем новое вращение на текущее (накапливаем)
-        currentRot = newRot * currentRot;
-        XMStoreFloat4x4(&player.sphere.rotationMatrix, currentRot);
+        // создаём кватернион вращения
+        DirectX::XMVECTOR rotQuat = DirectX::XMQuaternionRotationAxis(rotAxis, rotationAngle);
+
+        // аккумулируем к существующей ориентации
+        DirectX::XMVECTOR currentQuat = XMQuaternionRotationMatrix(XMLoadFloat4x4(&player.sphere.rotationMatrix));
+        DirectX::XMVECTOR newQuat = DirectX::XMQuaternionMultiply(rotQuat, currentQuat);
+        newQuat = DirectX::XMQuaternionNormalize(newQuat);
+
+        XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixRotationQuaternion(newQuat));
     }
 
     // --- Прилипание объектов ---
-    for (int i = 0; i < dynamicObjects.size(); i++) {
+    for(int i=0; i<dynamicObjects.size(); i++){
         auto& obj = dynamicObjects[i];
-        if (obj.attached) continue;
+        if(obj.attached) continue;
 
-        float radiusPlayer = 0.3f;
+        float radiusPlayer = player.sphere.radius;
         float radiusObj = obj.radius;
 
         DirectX::XMVECTOR playerPos = XMLoadFloat3(&player.sphere.position);
         DirectX::XMVECTOR objPos = XMLoadFloat3(&obj.position);
 
-        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(playerPos, objPos);
-        float distSq = DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(diff));
-        if (distSq <= (radiusPlayer + radiusObj) * (radiusPlayer + radiusObj)) {
+        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(objPos, playerPos);
+        float distSq = DirectX::XMVector3LengthSq(diff).m128_f32[0];
+
+        if(distSq <= (radiusPlayer + radiusObj)*(radiusPlayer + radiusObj)){
             obj.attached = true;
-            DirectX::XMVECTOR offset = DirectX::XMVectorSubtract(objPos, playerPos);
-            DirectX::XMFLOAT3 localOffset;
-            XMStoreFloat3(&localOffset, offset);
-            player.attachedObjects.push_back({ i, localOffset });
+
+            DirectX::XMVECTOR dir = DirectX::XMVector3Normalize(diff);
+            float dist = DirectX::XMVector3Length(diff).m128_f32[0];
+
+            DirectX::XMFLOAT3 localDir;
+            XMStoreFloat3(&localDir, dir);
+
+            player.attachedObjects.push_back({i, localDir, dist});
         }
     }
 
     // --- Обновление позиций прилипших объектов ---
-    DirectX::XMMATRIX rot = DirectX::XMLoadFloat4x4(&player.sphere.rotationMatrix);
+    DirectX::XMMATRIX playerRot = XMLoadFloat4x4(&player.sphere.rotationMatrix);
     DirectX::XMVECTOR playerPos = XMLoadFloat3(&player.sphere.position);
-    for (auto& ao : player.attachedObjects) {
+
+    for(auto& ao : player.attachedObjects){
         auto& obj = dynamicObjects[ao.index];
-        DirectX::XMVECTOR local = XMLoadFloat3(&ao.localOffset);
-        DirectX::XMVECTOR worldPos = DirectX::XMVector3Transform(local, rot);
-        worldPos = DirectX::XMVectorAdd(worldPos, playerPos);
+        DirectX::XMVECTOR localDir = XMLoadFloat3(&ao.localOffsetDir);
+        DirectX::XMVECTOR rotatedDir = XMVector3TransformNormal(localDir, playerRot);
+        DirectX::XMVECTOR worldOffset = DirectX::XMVectorScale(rotatedDir, ao.distance);
+
+        DirectX::XMVECTOR worldPos = DirectX::XMVectorAdd(playerPos, worldOffset);
         XMStoreFloat3(&obj.position, worldPos);
+
+        XMStoreFloat4x4(&obj.rotationMatrix, playerRot);
     }
 }

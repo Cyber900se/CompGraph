@@ -8,9 +8,9 @@
 #include "../Cameras/Camera.h"
 
 struct AttachedObject {
-    int index;                      // индекс объекта в массиве сцены
-    DirectX::XMFLOAT3 localOffset;  // смещение от центра игрока
-    DirectX::XMFLOAT4 localRotation{0,0,0,1};
+    int index;
+    DirectX::XMFLOAT3 localOffsetDir; // нормализованное направление от центра игрока
+    float distance;                    // расстояние до поверхности
 };
 
 struct Player {
