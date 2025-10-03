@@ -345,21 +345,25 @@ void Scene::Update(float deltaTime, const InputHandler& input,
         // локальная вертикаль игрока
         DirectX::XMVECTOR localUp = DirectX::XMVectorSet(0,1,0,0);
 
-        // ось вращения для "катания"
+        // ось вращения для "катания" (рассчитывается в мировом пространстве)
         DirectX::XMVECTOR rotAxis = DirectX::XMVector3Cross(horizontalMove, localUp);
         rotAxis = DirectX::XMVector3Normalize(rotAxis);
 
-        // угол вращения = расстояние / радиус шара
-        float rotationAngle = moveLen * deltaTime / player.sphere.radius;
+        // угол вращения (инвертирован для корректного направления)
+        float rotationAngle = -moveLen * deltaTime / player.sphere.radius;
 
         // создаём кватернион вращения
         DirectX::XMVECTOR rotQuat = DirectX::XMQuaternionRotationAxis(rotAxis, rotationAngle);
 
-        // аккумулируем к существующей ориентации
-        DirectX::XMVECTOR currentQuat = XMQuaternionRotationMatrix(XMLoadFloat4x4(&player.sphere.rotationMatrix));
-        DirectX::XMVECTOR newQuat = DirectX::XMQuaternionMultiply(rotQuat, currentQuat);
+        // аккумулируем к существующей ориентации (используем rotationQuat)
+        DirectX::XMVECTOR currentQuat = XMLoadFloat4(&player.sphere.rotationQuat);
+
+        // ИСПРАВЛЕНО: Post-multiplication (current * rot) для корректного роллинга
+        DirectX::XMVECTOR newQuat = DirectX::XMQuaternionMultiply(currentQuat, rotQuat);
         newQuat = DirectX::XMQuaternionNormalize(newQuat);
 
+        // Сохраняем кватернион и обновляем матрицу вращения для рендера
+        XMStoreFloat4(&player.sphere.rotationQuat, newQuat);
         XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixRotationQuaternion(newQuat));
     }
 
@@ -380,13 +384,24 @@ void Scene::Update(float deltaTime, const InputHandler& input,
         if(distSq <= (radiusPlayer + radiusObj)*(radiusPlayer + radiusObj)){
             obj.attached = true;
 
-            DirectX::XMVECTOR dir = DirectX::XMVector3Normalize(diff);
-            float dist = DirectX::XMVector3Length(diff).m128_f32[0];
+            // Мировое смещение (от игрока до объекта)
+            DirectX::XMVECTOR worldOffset = diff;
 
-            DirectX::XMFLOAT3 localDir;
-            XMStoreFloat3(&localDir, dir);
+            // Нам нужно найти локальное смещение, трансформируя мировое
+            // WorldOffset = PlayerRot * LocalOffset => LocalOffset = PlayerRot_Inv * WorldOffset
 
-            player.attachedObjects.push_back({i, localDir, dist});
+            // 1. Получаем обратную матрицу вращения игрока
+            DirectX::XMMATRIX playerRot = XMLoadFloat4x4(&player.sphere.rotationMatrix);
+            DirectX::XMMATRIX playerRotInv = DirectX::XMMatrixInverse(nullptr, playerRot);
+
+            // 2. Трансформируем мировое смещение в локальное (умножаем на обратную матрицу)
+            DirectX::XMVECTOR localOffsetVector = XMVector3TransformNormal(worldOffset, playerRotInv);
+
+            DirectX::XMFLOAT3 localOffset;
+            XMStoreFloat3(&localOffset, localOffsetVector);
+
+            // player.attachedObjects.push_back({i, localDir, dist});
+            player.attachedObjects.push_back({i, localOffset}); // Сохраняем полный локальный вектор смещения
         }
     }
 
@@ -396,13 +411,17 @@ void Scene::Update(float deltaTime, const InputHandler& input,
 
     for(auto& ao : player.attachedObjects){
         auto& obj = dynamicObjects[ao.index];
-        DirectX::XMVECTOR localDir = XMLoadFloat3(&ao.localOffsetDir);
-        DirectX::XMVECTOR rotatedDir = XMVector3TransformNormal(localDir, playerRot);
-        DirectX::XMVECTOR worldOffset = DirectX::XMVectorScale(rotatedDir, ao.distance);
+        // Загружаем сохраненный локальный вектор смещения
+        DirectX::XMVECTOR localOffset = XMLoadFloat3(&ao.localOffset);
 
+        // Трансформируем локальное смещение текущей матрицей вращения игрока в мировое
+        DirectX::XMVECTOR worldOffset = XMVector3TransformNormal(localOffset, playerRot);
+
+        // Мировая позиция объекта = Позиция игрока + Мировое смещение
         DirectX::XMVECTOR worldPos = DirectX::XMVectorAdd(playerPos, worldOffset);
         XMStoreFloat3(&obj.position, worldPos);
 
+        // Обновляем матрицу вращения объекта, чтобы он вращался вместе с шаром
         XMStoreFloat4x4(&obj.rotationMatrix, playerRot);
     }
 }
