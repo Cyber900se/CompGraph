@@ -82,6 +82,10 @@ RenderObject Scene::CreateCube(ID3D11Device* device, float size, const DirectX::
     obj.indexCount = ARRAYSIZE(indices);
     obj.position = { orbitRadius + yOffset, yOffset, 0.0f };
 
+    DirectX::XMVECTOR identityQuat = DirectX::XMQuaternionIdentity();
+    DirectX::XMStoreFloat4(&obj.rotationQuat, identityQuat);
+    DirectX::XMStoreFloat4x4(&obj.rotationMatrix, DirectX::XMMatrixRotationQuaternion(identityQuat));
+
     return obj;
 }
 
@@ -218,6 +222,10 @@ RenderObject Scene::CreateSphere(
     obj.position = { orbitRadius + yOffset, yOffset, 0.0f };
     obj.radius = radius;
 
+    DirectX::XMVECTOR identityQuat = DirectX::XMQuaternionIdentity();
+    DirectX::XMStoreFloat4(&obj.rotationQuat, identityQuat);
+    DirectX::XMStoreFloat4x4(&obj.rotationMatrix, DirectX::XMMatrixRotationQuaternion(identityQuat));
+
     return obj;
 }
 
@@ -278,7 +286,9 @@ void Scene::Initialize(ID3D11Device* device)
     //player.sphere = CreateCube(device, 0.6f, {1, 0, 0, 1});
     player.sphere = CreateSphere(device, 0.3f, 12, 12, {1, 0, 0, 1});
     player.sphere.position = {0.0f, 0.3f, 0.0f};
-    DirectX::XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixIdentity());
+    DirectX::XMVECTOR identityQuat = DirectX::XMQuaternionIdentity();
+    DirectX::XMStoreFloat4(&player.sphere.rotationQuat, identityQuat); // <-- ДОБАВЛЕНО
+    DirectX::XMStoreFloat4x4(&player.sphere.rotationMatrix, DirectX::XMMatrixRotationQuaternion(identityQuat));
 }
 
 
@@ -387,9 +397,6 @@ void Scene::Update(float deltaTime, const InputHandler& input,
             // Мировое смещение (от игрока до объекта)
             DirectX::XMVECTOR worldOffset = diff;
 
-            // Нам нужно найти локальное смещение, трансформируя мировое
-            // WorldOffset = PlayerRot * LocalOffset => LocalOffset = PlayerRot_Inv * WorldOffset
-
             // 1. Получаем обратную матрицу вращения игрока
             DirectX::XMMATRIX playerRot = XMLoadFloat4x4(&player.sphere.rotationMatrix);
             DirectX::XMMATRIX playerRotInv = DirectX::XMMatrixInverse(nullptr, playerRot);
@@ -400,8 +407,16 @@ void Scene::Update(float deltaTime, const InputHandler& input,
             DirectX::XMFLOAT3 localOffset;
             XMStoreFloat3(&localOffset, localOffsetVector);
 
+            DirectX::XMVECTOR objRotQuat = DirectX::XMLoadFloat4(&obj.rotationQuat); // если у RenderObject есть rotationQuat
+            if (obj.rotationQuat.w == 0 && obj.rotationQuat.x == 0) { // если не инициализирован, берем identity
+                objRotQuat = DirectX::XMQuaternionIdentity();
+            }
+
+            DirectX::XMFLOAT4 initialQuat;
+            DirectX::XMStoreFloat4(&initialQuat, objRotQuat);
+
             // player.attachedObjects.push_back({i, localDir, dist});
-            player.attachedObjects.push_back({i, localOffset}); // Сохраняем полный локальный вектор смещения
+            player.attachedObjects.push_back({i, localOffset, initialQuat}); // Сохраняем начальное вращение
         }
     }
 
@@ -421,7 +436,12 @@ void Scene::Update(float deltaTime, const InputHandler& input,
         DirectX::XMVECTOR worldPos = DirectX::XMVectorAdd(playerPos, worldOffset);
         XMStoreFloat3(&obj.position, worldPos);
 
-        // Обновляем матрицу вращения объекта, чтобы он вращался вместе с шаром
-        XMStoreFloat4x4(&obj.rotationMatrix, playerRot);
+        DirectX::XMVECTOR initialQuat = DirectX::XMLoadFloat4(&ao.initialRotationQuat);
+        DirectX::XMVECTOR playerQuat = XMLoadFloat4(&player.sphere.rotationQuat);
+        DirectX::XMVECTOR newObjQuat = DirectX::XMQuaternionMultiply(playerQuat, initialQuat);
+        newObjQuat = DirectX::XMQuaternionNormalize(newObjQuat);
+
+        // Обновляем матрицу вращения объекта
+        XMStoreFloat4x4(&obj.rotationMatrix, DirectX::XMMatrixRotationQuaternion(newObjQuat));
     }
 }

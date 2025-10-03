@@ -280,7 +280,15 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     }
 
     for (auto& obj : scene.GetDynamicObjects()) {
-        DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+        // Загружаем матрицу вращения (обновленную в Scene::Update)
+        DirectX::XMMATRIX rot = XMLoadFloat4x4(&obj.rotationMatrix);
+
+        // Создаем матрицу перемещения
+        DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+
+        // Комбинируем: World = Rotation * Translation (для правильного порядка преобразований)
+        DirectX::XMMATRIX world = rot * trans;
+
         drawObject(obj, world);
     }
 

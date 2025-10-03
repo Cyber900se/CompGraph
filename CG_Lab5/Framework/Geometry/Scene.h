@@ -9,9 +9,8 @@
 
 struct AttachedObject {
     int index;
-    //DirectX::XMFLOAT3 localOffsetDir; // нормализованное направление от центра игрока
-    //float distance;                    // расстояние до поверхности
     DirectX::XMFLOAT3 localOffset;
+    DirectX::XMFLOAT4 initialRotationQuat;
 };
 
 struct Player {
