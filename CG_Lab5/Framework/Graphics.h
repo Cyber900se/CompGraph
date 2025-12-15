@@ -30,12 +30,6 @@ struct PSConstants {
     DirectX::XMFLOAT3 ambientColor;
     int numLights;
 
-    struct Light {
-        DirectX::XMFLOAT3 position;
-        float intensity;           // выравнивание 16 байт
-        DirectX::XMFLOAT3 color;
-        float padding;
-    };
     Light lights[100];
 
     DirectX::XMFLOAT3 cameraPos;
@@ -50,6 +44,9 @@ public:
     bool Initialize(HWND hWnd, UINT width, UINT height);
     void Render(float totalTime, float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions);
     void Update(float deltaTime, InputHandler& input);
+
+    void RenderShadowMap();
+
     void Resize(UINT width, UINT height);
     void HandleInput(const InputHandler &input, float deltaTime);
 
@@ -70,6 +67,9 @@ private:
 
     bool InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height);
     bool InitShaders(HWND hWnd);
+
+    bool InitShadowMap();
+
     bool InitCamera();
 
     void ToggleCamera();
@@ -88,8 +88,24 @@ private:
     ID3D11Buffer* indexBuffer;
     ID3D11Buffer* constantBuffer;
     ID3D11RasterizerState* rastState;
+    ID3D11RasterizerState* shadowMapRasterizerState;
     ID3D11DepthStencilState* depthStencilState;
     ID3D11Buffer* psConstantBuffer;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> worldConstantBuffer;
+
+
+    ID3D11VertexShader * lightVertexShader;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowMapTexture;
+    ID3D11DepthStencilView* shadowMapDSV;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowMapSRV;
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSampler;
+
+    static constexpr UINT SHADOW_MAP_SIZE = 1024; // Или 2048, 4096
+    DirectX::XMMATRIX lightViewMatrix;
+    DirectX::XMMATRIX lightProjectionMatrix;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> lightConstantBuffer;
 
     std::unique_ptr<ThirdPersonCamera> thirdPersonCamera;
     Camera* activeCamera = nullptr;

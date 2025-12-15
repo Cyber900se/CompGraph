@@ -1,38 +1,69 @@
-cbuffer VSConstants : register(b0)
+cbuffer WorldOnly : register(b0)
 {
-	matrix world;
-	matrix view;
-	matrix proj;
-	matrix worldInvTranspose; // новая матрица для нормалей
+    matrix WorldMatrix;
 };
 
-cbuffer PSConstants : register(b1)
+cbuffer VSConstants : register(b1)
 {
-	float3 ambientColor;
-	int numLights;
+    matrix world;
+    matrix view;
+    matrix proj;
+    matrix worldInvTranspose; 
+};
 
-	struct Light
-	{
-		float3 position;
-		float intensity;
-		float3 color;
-		float padding;
-	};
-	Light lights[100];
+cbuffer PSConstants : register(b2)
+{
+    float3 ambientColor;
+    int numLights;
 
-	float3 cameraPos;
-	float padding;
+    struct Light
+    {
+       float3 position;
+       float intensity;
+       float3 color;
+       float padding;
+    };
+    Light lights[100];
 
-	float4 padding2;
+    float3 cameraPos;
+    float padding;
+
+};
+
+cbuffer LightMatrices : register(b3)
+{
+    matrix LightView;
+    matrix LightProjection;
+};
+
+struct VS_OUTPUT_DEPTH
+{
+    float4 Pos      : SV_POSITION;
 };
 
 struct VS_OUTPUT
 {
-	float4 Pos      : SV_POSITION;
-	float4 Color    : COLOR0;
-	float3 Normal   : NORMAL;
-	float3 WorldPos : POSITION1;
+    float4 Pos      : SV_POSITION;
+    float4 Color    : COLOR0;
+    float3 Normal   : NORMAL;
+    float3 WorldPos : POSITION1;
+    float4 ShadowPos : TEXCOORD0;
 };
+
+Texture2D ShadowMap : register(t0); 
+SamplerComparisonState ShadowSampler : register(s0); // Comparison Sampler для PCF
+
+VS_OUTPUT_DEPTH LightVSMain(float4 pos : POSITION)
+{
+    VS_OUTPUT_DEPTH output;
+
+    float4 worldPos = mul(pos, WorldMatrix);
+
+    float4 lightViewPos = mul(worldPos, LightView);
+    output.Pos = mul(lightViewPos, LightProjection);
+    
+    return output;
+}
 
 VS_OUTPUT VSMain(float4 pos : POSITION, float4 color : COLOR, float3 normal : NORMAL)
 {
@@ -42,36 +73,67 @@ VS_OUTPUT VSMain(float4 pos : POSITION, float4 color : COLOR, float3 normal : NO
     output.WorldPos = worldPos4.xyz;
     output.Pos = mul(mul(worldPos4, view), proj);
 
-    // Преобразование нормали в мировое пространство
     float3 normalW = mul(normal, (float3x3)worldInvTranspose);
-    output.Normal = normalize(normalW); // Важно нормализовать!
+    output.Normal = normalize(normalW); 
 
     output.Color = color;
+
+    float4 lightViewPos = mul(worldPos4, LightView);
+
+    output.ShadowPos = mul(lightViewPos, LightProjection);
+    
     return output;
+}
+
+float CalculateShadowFactor(float4 shadowPos)
+{
+    // Переводим из clip space [-1,1] → UV [0,1]
+    float2 projTexCoord = 0.5f * (shadowPos.xy / shadowPos.w) + 0.5f;
+    float compareDepth  = shadowPos.z / shadowPos.w;
+
+    // Вне shadow map → нет тени
+    if (projTexCoord.x < 0.0f || projTexCoord.x > 1.0f ||
+        projTexCoord.y < 0.0f || projTexCoord.y > 1.0f)
+        return 1.0f;
+
+    // Размер texel'а для PCF
+    float2 texelSize = 1.0f / float2(1024.0f, 1024.0f);
+
+    // Небольшой bias, чтобы убрать acne
+    float bias = 0.005f;
+
+    // PCF 2x2
+    float result = 0.0f;
+    result += ShadowMap.SampleCmpLevelZero(ShadowSampler, projTexCoord + texelSize * float2(-0.5f, -0.5f), compareDepth + bias);
+    result += ShadowMap.SampleCmpLevelZero(ShadowSampler, projTexCoord + texelSize * float2( 0.5f, -0.5f), compareDepth + bias);
+    result += ShadowMap.SampleCmpLevelZero(ShadowSampler, projTexCoord + texelSize * float2(-0.5f,  0.5f), compareDepth + bias);
+    result += ShadowMap.SampleCmpLevelZero(ShadowSampler, projTexCoord + texelSize * float2( 0.5f,  0.5f), compareDepth + bias);
+
+    return saturate(result * 0.25f); // clamp 0..1
 }
 
 float4 PSMain(VS_OUTPUT input) : SV_TARGET
 {
-	float3 N = normalize(input.Normal);
-	float3 V = normalize(cameraPos - input.WorldPos);
+    float3 N = normalize(input.Normal);
+    float3 V = normalize(cameraPos - input.WorldPos);
 
-	float3 finalColor = ambientColor * input.Color.rgb;
+    float shadowFactor = CalculateShadowFactor(input.ShadowPos);
 
-	for (int i = 0; i < numLights; i++)
-	{
-		float3 L = normalize(lights[i].position - input.WorldPos);
+    float3 finalColor = ambientColor * input.Color.rgb;
 
-		// диффуз
-		float diff = max(dot(N, L), 0.0);
-		float3 diffuse = diff * input.Color.rgb * lights[i].color * lights[i].intensity;
+    for (int i = 0; i < numLights; i++)
+    {
+       float3 L = normalize(lights[i].position - input.WorldPos);
 
-		// спекуляр (только если diff > 0)
-		float3 R = reflect(-L, N);
-		float spec = (diff > 0.0) ? pow(max(dot(R, V), 0.0), 16) : 0.0;
-		float3 specular = spec * lights[i].color * lights[i].intensity;
+       float diff = max(dot(N, L), 0.0);
+       float3 diffuse = diff * input.Color.rgb * lights[i].color * lights[i].intensity;
 
-		finalColor += diffuse + specular;
-	}
+       float3 R = reflect(-L, N);
+       float spec = (diff > 0.0) ? pow(max(dot(R, V), 0.0), 16) : 0.0;
+       float3 specular = spec * lights[i].color * lights[i].intensity;
 
-	return float4(finalColor, input.Color.a);
+       finalColor += (diffuse + specular) * shadowFactor; 
+    }
+
+    return float4(finalColor, input.Color.a);
 }

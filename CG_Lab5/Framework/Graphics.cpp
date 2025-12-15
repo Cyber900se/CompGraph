@@ -14,6 +14,7 @@ bool Graphics::Initialize(HWND hWnd, UINT width, UINT height) {
 
     if (!InitDeviceAndSwapChain(hWnd, width, height)) return false;
     if (!InitShaders(hWnd)) return false;
+    if (!InitShadowMap()) return false;
     if (!InitCamera()) return false;
 
     scene.Initialize(device.Get());
@@ -108,6 +109,12 @@ bool Graphics::InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height) {
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     device->CreateBuffer(&cbd, nullptr, &constantBuffer);
 
+    D3D11_BUFFER_DESC worldCbd = {};
+    worldCbd.Usage = D3D11_USAGE_DEFAULT;
+    worldCbd.ByteWidth = sizeof(DirectX::XMMATRIX); // Только World
+    worldCbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    device->CreateBuffer(&worldCbd, nullptr, &worldConstantBuffer);
+
     D3D11_DEPTH_STENCIL_DESC dsDesc = {};
     dsDesc.DepthEnable = true;
     dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
@@ -131,7 +138,7 @@ bool Graphics::InitDeviceAndSwapChain(HWND hWnd, UINT width, UINT height) {
     }
 
 bool Graphics::InitShaders(HWND hWnd) {
-    Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, psBlob, error;
+    Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, psBlob, vsBlobLight, error;
 
     HRESULT hr = D3DCompileFromFile(L"Shaders/MyVeryFirstShader.hlsl", nullptr, nullptr,
                                    "VSMain", "vs_5_0", 0, 0, &vsBlob, &error);
@@ -141,16 +148,31 @@ bool Graphics::InitShaders(HWND hWnd) {
         }
         return false;
     }
+    hr = device->CreateVertexShader(vsBlob->GetBufferPointer(),
+                                vsBlob->GetBufferSize(),
+                                nullptr,
+                                &vertexShader);
+    if (FAILED(hr)) {
+        MessageBox(nullptr, L"Failed to create main vertex shader!", L"Error", MB_OK);
+        return false;
+    }
 
-    hr = device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
-                                    nullptr, &vertexShader);
+    hr = D3DCompileFromFile(L"Shaders/MyVeryFirstShader.hlsl", nullptr, nullptr,
+                            "LightVSMain", "vs_5_0", 0, 0, &vsBlobLight, &error);
+    if (FAILED(hr)) {
+        if (error) MessageBox(nullptr, L"Light Shader Error!", L"Error", MB_OK);
+        return false;
+    }
+    hr = device->CreateVertexShader(vsBlobLight->GetBufferPointer(), vsBlobLight->GetBufferSize(),
+                                    nullptr, &lightVertexShader);
     if (FAILED(hr)) return false;
+
 
     hr = D3DCompileFromFile(L"Shaders/MyVeryFirstShader.hlsl", nullptr, nullptr,
                             "PSMain", "ps_5_0", 0, 0, &psBlob, &error);
     if (FAILED(hr)) return false;
-
-    device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
+    hr = device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
+    if (FAILED(hr)) return false;
 
     D3D11_INPUT_ELEMENT_DESC objLayout[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -159,10 +181,83 @@ bool Graphics::InitShaders(HWND hWnd) {
     };
 
 
-    device->CreateInputLayout(objLayout, ARRAYSIZE(objLayout), vsBlob->GetBufferPointer(),
-                              vsBlob->GetBufferSize(), &inputLayout);
+    hr = device->CreateInputLayout(objLayout, ARRAYSIZE(objLayout),
+                                   vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
+    if (FAILED(hr)) {
+        MessageBox(nullptr, L"CreateInputLayout failed!", L"Error", MB_OK);
+        return false;
+    }
 
     return true;
+}
+
+bool Graphics::InitShadowMap() {
+    // 1. Создание текстуры глубины
+    D3D11_TEXTURE2D_DESC depthTexDesc = {};
+    depthTexDesc.Width = SHADOW_MAP_SIZE;
+    depthTexDesc.Height = SHADOW_MAP_SIZE;
+    depthTexDesc.MipLevels = 1;
+    depthTexDesc.ArraySize = 1;
+    depthTexDesc.SampleDesc.Count = 1;
+    depthTexDesc.Format = DXGI_FORMAT_R24G8_TYPELESS; // Используем TYPELESS для возможности создания SRV и DSV
+    depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
+    depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+
+    HRESULT hr = device->CreateTexture2D(&depthTexDesc, nullptr, &shadowMapTexture);
+    if (FAILED(hr)) return false;
+
+    // 2. Создание Depth Stencil View (DSV) для рендеринга в карту теней
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // Формат глубины
+    dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Texture2D.MipSlice = 0;
+
+    hr = device->CreateDepthStencilView(shadowMapTexture.Get(), &dsvDesc, &shadowMapDSV);
+    if (FAILED(hr)) return false;
+
+    // 3. Создание Shader Resource View (SRV) для считывания карты теней в шейдерах
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS; // Формат для чтения глубины
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+
+    hr = device->CreateShaderResourceView(shadowMapTexture.Get(), &srvDesc, &shadowMapSRV);
+    if (FAILED(hr)) return false;
+
+    // 4. Создание Sampler State для считывания карты теней (с компаратором для PCF)
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT; // Сравнение для теней
+    samplerDesc.AddressU = samplerDesc.AddressV = samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+    samplerDesc.BorderColor[0] = samplerDesc.BorderColor[1] = samplerDesc.BorderColor[2] = samplerDesc.BorderColor[3] = 1.0f; // За пределами текстуры — тень (глубина 1)
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+    hr = device->CreateSamplerState(&samplerDesc, &shadowSampler);
+    if (FAILED(hr)) return false;
+
+    // 5. Создание константного буфера для матриц света
+    D3D11_BUFFER_DESC lightCbd = {};
+    lightCbd.Usage = D3D11_USAGE_DEFAULT;
+    lightCbd.ByteWidth = sizeof(DirectX::XMMATRIX) * 2; // LightView * LightProj
+    lightCbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    hr = device->CreateBuffer(&lightCbd, nullptr, &lightConstantBuffer);
+
+    // НОВОЕ: 6. Создание Rasterizer State для карты теней (Shadow Bias)
+    D3D11_RASTERIZER_DESC shadowRastDesc = {};
+    shadowRastDesc.FillMode = D3D11_FILL_SOLID;
+    shadowRastDesc.CullMode = D3D11_CULL_FRONT; // Отбрасываем лицевые грани
+    shadowRastDesc.DepthClipEnable = TRUE;
+
+    // !!! Настройка Depth Bias для борьбы с Shadow Acne !!!
+    // Настройте эти значения, если будут артефакты.
+    shadowRastDesc.DepthBias = 1000;
+    shadowRastDesc.DepthBiasClamp = 0.0f;
+    shadowRastDesc.SlopeScaledDepthBias = 2.0f;
+
+    hr = device->CreateRasterizerState(&shadowRastDesc, &shadowMapRasterizerState);
+    if (FAILED(hr)) return false;
+
+    return SUCCEEDED(hr);
 }
 
 bool Graphics::InitCamera() {
@@ -208,10 +303,114 @@ void Graphics::Update(float deltaTime, InputHandler& input)
 
     // передаём вычисленные направления в сцену
     scene.Update(deltaTime, input, camForward, camRight);
+
+    // Упрощенный направленный свет, смотрящий в центр (0,0,0)
+    DirectX::XMVECTOR lightDir = DirectX::XMVector3Normalize(DirectX::XMVectorSet(1.0f, -1.0f, 1.0f, 0.0f));
+    DirectX::XMVECTOR target = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+    DirectX::XMVECTOR lightPos = DirectX::XMVectorSubtract(target, DirectX::XMVectorScale(lightDir, 15.0f));
+    up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    lightViewMatrix = DirectX::XMMatrixLookAtLH(lightPos, target, up);
+
+    // Ортографическая проекция, охватывающая сцену (например, 20x20)
+    float sceneBound = 1000.0f;
+    lightProjectionMatrix = DirectX::XMMatrixOrthographicLH(sceneBound * 2.0f, sceneBound * 2.0f, 0.1f, 1000.0f);
+
+    // Сохраняем матрицы в константный буфер для света.
+    // Нам это понадобится и для первого (VS) и для второго (VS) прохода.
+    struct LightMatricesData
+    {
+        DirectX::XMMATRIX LightView;
+        DirectX::XMMATRIX LightProjection;
+    };
+
+    // обновляем
+    LightMatricesData lm{};
+    lm.LightView = XMMatrixTranspose(lightViewMatrix);
+    lm.LightProjection = XMMatrixTranspose(lightProjectionMatrix);
+
+    context->UpdateSubresource(lightConstantBuffer.Get(), 0, nullptr, &lm, 0, 0);
 }
 
+void Graphics::RenderShadowMap() {
+    // 1. Настройка Viewport для карты теней
+    D3D11_VIEWPORT shadowVp = {};
+    shadowVp.Width = static_cast<float>(SHADOW_MAP_SIZE);
+    shadowVp.Height = static_cast<float>(SHADOW_MAP_SIZE);
+    shadowVp.MinDepth = 0.0f;
+    shadowVp.MaxDepth = 1.0f;
+    context->RSSetViewports(1, &shadowVp);
+    context->RSSetState(shadowMapRasterizerState);
+
+    // 2. Очистка DSV карты теней
+    context->ClearDepthStencilView(shadowMapDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+    context->OMSetRenderTargets(0, nullptr, shadowMapDSV);
+
+    // 3. Установка цели рендеринга: ТОЛЬКО DSV (RenderTargetView = nullptr)
+    context->OMSetRenderTargets(0, nullptr, shadowMapDSV);
+
+    // 4. Установка шейдеров для рендеринга глубины
+    context->IASetInputLayout(inputLayout);
+    context->VSSetShader(lightVertexShader, nullptr, 0); // LightVS
+    context->PSSetShader(nullptr, nullptr, 0); // Pixel Shader не нужен!
+
+    // 5. Установка константных буферов
+    context->VSSetConstantBuffers(3, 1, lightConstantBuffer.GetAddressOf());
+
+    // ИЗМЕНЕНИЕ СЛОТА: WorldOnly в слот 0 (b0)
+    context->VSSetConstantBuffers(0, 1, worldConstantBuffer.GetAddressOf());
+
+
+    // --- Функция отрисовки для первого прохода ---
+    auto drawObjectDepth = [&](const RenderObject& obj, const DirectX::XMMATRIX& world) {
+        DirectX::XMMATRIX worldTransposed = DirectX::XMMatrixTranspose(world);
+        // Обновляем новый буфер, содержащий только World
+        context->UpdateSubresource(worldConstantBuffer.Get(), 0, nullptr, &worldTransposed, 0, 0);
+
+        UINT stride = sizeof(Vertex), offset = 0;
+        context->IASetVertexBuffers(0, 1, &obj.vertexBuffer, &stride, &offset);
+        context->IASetIndexBuffer(obj.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+        context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        context->DrawIndexed(obj.indexCount, 0, 0);
+    };
+
+    // Статические
+    for (const auto& obj : scene.GetStaticObjects()) {
+        DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+        drawObjectDepth(obj, world);
+    }
+
+    // Динамические
+    for (auto& obj : scene.GetDynamicObjects()) {
+        DirectX::XMMATRIX rot = XMLoadFloat4x4(&obj.rotationMatrix);
+        DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(obj.position.x, obj.position.y, obj.position.z);
+        DirectX::XMMATRIX world = rot * trans;
+        drawObjectDepth(obj, world);
+    }
+
+    // Игрок
+    {
+        auto& p = scene.player.sphere;
+        DirectX::XMMATRIX rot = XMLoadFloat4x4(&p.rotationMatrix);
+        DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(p.position.x, p.position.y, p.position.z);
+        DirectX::XMMATRIX world = rot * trans;
+        drawObjectDepth(p, world);
+    }
+
+
+    // 7. Сброс константных буферов и ресурсов
+    ID3D11Buffer* nullCBs[4] = { nullptr, nullptr, nullptr, nullptr };
+    context->VSSetConstantBuffers(0, 4, nullCBs); // Сброс слотов 0, 1, 2, 3
+
+    ID3D11DepthStencilView* nullDSV = nullptr;
+    context->OMSetRenderTargets(0, nullptr, nullDSV);
+
+    // НОВОЕ: Возврат к основному растеризатору
+    context->RSSetState(rastState);
+}
 
 void Graphics::Render(float totalTime, float width, float height, std::vector<DirectX::XMFLOAT3> lightPositions) {
+    RenderShadowMap();
     // Получаем позицию камеры
     DirectX::XMFLOAT3 camPos{};
     DirectX::XMStoreFloat3(&camPos, activeCamera->GetPositionVector());
@@ -230,7 +429,7 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     }
 
     context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psConst, 0, 0);
-    context->PSSetConstantBuffers(1, 1, &psConstantBuffer);
+    context->PSSetConstantBuffers(2, 1, &psConstantBuffer);
 
     // Очистка буфера
     float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
@@ -248,10 +447,14 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
     vp.TopLeftY = 0;
     context->RSSetViewports(1, &vp);
 
+    context->PSSetShaderResources(0, 1, shadowMapSRV.GetAddressOf());
+    context->PSSetSamplers(0, 1, shadowSampler.GetAddressOf());
+
     context->IASetInputLayout(inputLayout);
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(pixelShader, nullptr, 0);
-    context->VSSetConstantBuffers(0, 1, &constantBuffer);
+    context->VSSetConstantBuffers(1, 1, &constantBuffer);
+    context->VSSetConstantBuffers(3, 1, lightConstantBuffer.GetAddressOf());
 
     DirectX::XMMATRIX view = activeCamera->GetViewMatrix();
     DirectX::XMMATRIX proj = projectionMatrix;
@@ -299,6 +502,9 @@ void Graphics::Render(float totalTime, float width, float height, std::vector<Di
         DirectX::XMMATRIX world = rot * trans;
         drawObject(p, world);
     }
+    ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+    context->PSSetShaderResources(0, 1, nullSRV);
+
 
     swapChain->Present(1, 0);
 }

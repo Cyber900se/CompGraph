@@ -4,7 +4,7 @@
 struct Vertex {
     DirectX::XMFLOAT4 position;
     DirectX::XMFLOAT4 color;
-    DirectX::XMFLOAT3 normal; // ← для Phong
+    DirectX::XMFLOAT3 normal;
 };
 
 struct RenderObject {
